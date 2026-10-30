@@ -364,8 +364,8 @@ function DAD() {
 const HMSPARTS = [
   ["Menu bar", "File (new/open/save project), Components (create basin, meteorologic and control components; data managers), GIS (terrain tools), Parameters, Compute (create and run simulations), Results.", [20, 46, 940, 22]],
   ["Toolbar", "Element creation tools — subbasin, reach, reservoir, junction, diversion, source, sink — plus zoom/pan and the Compute Current Run button.", [20, 70, 940, 26]],
-  ["Watershed Explorer", "The project tree. Three tabs: Components (everything you build), Compute (simulation runs and analyses) and Results (outputs of computed runs).", [28, 104, 250, 230]],
-  ["Component Editor", "Parameters of whatever is selected in the Explorer or on the map — a subbasin's area and methods, a gauge's data, a run's start and end.", [28, 340, 250, 140]],
+  ["Watershed Explorer", "The project tree. Three tabs at its foot: Components (everything you build), Compute (simulation runs and analyses) and Results (outputs of computed runs).", [28, 104, 250, 230]],
+  ["Component Editor", "Parameters of whatever is selected in the Explorer or on the map. For a subbasin the tabs are Subbasin (area, downstream, methods), Loss, Transform, Baseflow and Options.", [28, 340, 250, 140]],
   ["Desktop", "Where the basin map, graphs and tables open. Elements are drawn and connected here.", [286, 104, 666, 376]],
   ["Message Log", "Notes, warnings and errors from every action. Always read it after a compute — red ERROR lines say what went wrong and where.", [28, 486, 924, 48]],
 ];

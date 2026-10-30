@@ -48,6 +48,10 @@ Reaches then route the hydrograph downstream; junctions add flows together; rese
 
 ::widget[hmstour]
 
+And the real thing — the Castro Valley sample project open in HEC-HMS 4.14 (Lab L01):
+
+![HEC-HMS 4.14 with the Castro Valley sample: Watershed Explorer (top left), Component Editor (bottom left), basin map (right) and Message Log (bottom right) — Screenshot](assets/img/labs/L01_08_castro_basin_subbasin.png)
+
 ## Typical workflow
 
 1. Create a project (metric units) — Lab L02.

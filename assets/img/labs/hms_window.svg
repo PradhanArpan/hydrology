@@ -31,24 +31,24 @@
 <rect x="420" y="74" width="20" height="18" rx="3" fill="#fff" stroke="#999"/>
 <line x1="20" y1="98" x2="960" y2="98" stroke="#bbb"/>
 <rect x="28" y="104" width="250" height="230" fill="#fff" stroke="#888"/>
-<rect x="30" y="106" width="80" height="20" fill="#fff" stroke="#aaa"/><text x="38" y="120" font-size="11">Components</text>
-<rect x="112" y="106" width="80" height="20" fill="#e9e9e9" stroke="#aaa"/><text x="120" y="120" font-size="11">Compute</text>
-<rect x="194" y="106" width="80" height="20" fill="#e9e9e9" stroke="#aaa"/><text x="202" y="120" font-size="11">Results</text>
-<text x="36" y="146" font-size="11" fill="#222" xml:space="preserve">▾ Basin Models</text>
-<text x="36" y="163" font-size="11" fill="#222" xml:space="preserve">    ▸ Teaching_Catchment</text>
-<text x="36" y="180" font-size="11" fill="#222" xml:space="preserve">▾ Meteorologic Models</text>
-<text x="36" y="197" font-size="11" fill="#222" xml:space="preserve">    ▸ Storm_TG1</text>
-<text x="36" y="214" font-size="11" fill="#222" xml:space="preserve">▾ Control Specifications</text>
-<text x="36" y="231" font-size="11" fill="#222" xml:space="preserve">    ▸ Day1</text>
-<text x="36" y="248" font-size="11" fill="#222" xml:space="preserve">▾ Time-Series Data</text>
-<text x="36" y="265" font-size="11" fill="#222" xml:space="preserve">    ▾ Precipitation Gages</text>
-<text x="36" y="282" font-size="11" fill="#222" xml:space="preserve">        ▸ TG1</text>
-<text x="36" y="299" font-size="11" fill="#222" xml:space="preserve">        ▸ TG2</text>
-<rect x="28" y="340" width="250" height="140" fill="#fff" stroke="#888"/>
-<rect x="30" y="342" width="60" height="18" fill="#fff" stroke="#aaa"/><text x="34" y="355" font-size="10">Subbasin</text>
-<rect x="92" y="342" width="60" height="18" fill="#e9e9e9" stroke="#aaa"/><text x="96" y="355" font-size="10">Loss</text>
-<rect x="154" y="342" width="60" height="18" fill="#e9e9e9" stroke="#aaa"/><text x="158" y="355" font-size="10">Transform</text>
-<rect x="216" y="342" width="60" height="18" fill="#e9e9e9" stroke="#aaa"/><text x="220" y="355" font-size="10">Options</text>
+<rect x="30" y="312" width="80" height="20" fill="#fff" stroke="#aaa"/><text x="38" y="326" font-size="11">Components</text>
+<rect x="112" y="312" width="80" height="20" fill="#e9e9e9" stroke="#aaa"/><text x="120" y="326" font-size="11">Compute</text>
+<rect x="194" y="312" width="80" height="20" fill="#e9e9e9" stroke="#aaa"/><text x="202" y="326" font-size="11">Results</text>
+<text x="36" y="124" font-size="11" fill="#222" xml:space="preserve">▾ Basin Models</text>
+<text x="36" y="141" font-size="11" fill="#222" xml:space="preserve">    ▸ Teaching_Catchment</text>
+<text x="36" y="158" font-size="11" fill="#222" xml:space="preserve">▾ Meteorologic Models</text>
+<text x="36" y="175" font-size="11" fill="#222" xml:space="preserve">    ▸ Storm_TG1</text>
+<text x="36" y="192" font-size="11" fill="#222" xml:space="preserve">▾ Control Specifications</text>
+<text x="36" y="209" font-size="11" fill="#222" xml:space="preserve">    ▸ Day1</text>
+<text x="36" y="226" font-size="11" fill="#222" xml:space="preserve">▾ Time-Series Data</text>
+<text x="36" y="243" font-size="11" fill="#222" xml:space="preserve">    ▾ Precipitation Gages</text>
+<text x="36" y="260" font-size="11" fill="#222" xml:space="preserve">        ▸ TG1</text>
+<text x="36" y="277" font-size="11" fill="#222" xml:space="preserve">        ▸ TG2</text>
+<rect x="28" y="340" width="250" height="140" fill="#fff" stroke="#888"/><rect x="30" y="342" width="56" height="18" fill="#fff" stroke="#aaa"/><text x="34" y="355" font-size="10">Subbasin</text><rect x="88" y="342" width="32" height="18" fill="#e9e9e9" stroke="#aaa"/><text x="92" y="355" font-size="10">Loss</text><rect x="122" y="342" width="62" height="18" fill="#e9e9e9" stroke="#aaa"/><text x="126" y="355" font-size="10">Transform</text><rect x="186" y="342" width="56" height="18" fill="#e9e9e9" stroke="#aaa"/><text x="190" y="355" font-size="10">Baseflow</text><rect x="244" y="342" width="50" height="18" fill="#e9e9e9" stroke="#aaa"/><text x="248" y="355" font-size="10">Options</text>
+
+
+
+
 <text x="38" y="378" font-size="10.5" fill="#444">Name:</text><rect x="128" y="368" width="142" height="14" fill="#fafafa" stroke="#ccc"/><text x="132" y="379" font-size="10" fill="#222">Sub1</text>
 <text x="38" y="395" font-size="10.5" fill="#444">Downstream:</text><rect x="128" y="385" width="142" height="14" fill="#fafafa" stroke="#ccc"/><text x="132" y="396" font-size="10" fill="#222">Outlet</text>
 <text x="38" y="412" font-size="10.5" fill="#444">Area (KM2):</text><rect x="128" y="402" width="142" height="14" fill="#fafafa" stroke="#ccc"/><text x="132" y="413" font-size="10" fill="#222">54.85</text>
@@ -78,7 +78,7 @@
 <circle cx="900" cy="512" r="11" fill="#c8973a"/><text x="900" y="516" font-size="12" font-weight="bold" text-anchor="middle" fill="#0f1f3d">6</text>
 <circle cx="38" cy="562" r="8" fill="#c8973a"/><text x="38" y="566" font-size="10" font-weight="bold" text-anchor="middle" fill="#0f1f3d">1</text><text x="52" y="566" font-size="11.5" fill="#1a3260">Menu bar — Components, GIS, Compute, Results</text>
 <circle cx="508" cy="562" r="8" fill="#c8973a"/><text x="508" y="566" font-size="10" font-weight="bold" text-anchor="middle" fill="#0f1f3d">2</text><text x="522" y="566" font-size="11.5" fill="#1a3260">Toolbar — element creation tools and Compute button</text>
-<circle cx="38" cy="584" r="8" fill="#c8973a"/><text x="38" y="588" font-size="10" font-weight="bold" text-anchor="middle" fill="#0f1f3d">3</text><text x="52" y="588" font-size="11.5" fill="#1a3260">Watershed Explorer — Components / Compute / Results tabs</text>
+<circle cx="38" cy="584" r="8" fill="#c8973a"/><text x="38" y="588" font-size="10" font-weight="bold" text-anchor="middle" fill="#0f1f3d">3</text><text x="52" y="588" font-size="11.5" fill="#1a3260">Watershed Explorer — project tree, tabs at its foot</text>
 <circle cx="508" cy="584" r="8" fill="#c8973a"/><text x="508" y="588" font-size="10" font-weight="bold" text-anchor="middle" fill="#0f1f3d">4</text><text x="522" y="588" font-size="11.5" fill="#1a3260">Component Editor — parameters of the selected item</text>
 <circle cx="38" cy="606" r="8" fill="#c8973a"/><text x="38" y="610" font-size="10" font-weight="bold" text-anchor="middle" fill="#0f1f3d">5</text><text x="52" y="610" font-size="11.5" fill="#1a3260">Desktop — basin map, graphs and tables</text>
 <circle cx="508" cy="606" r="8" fill="#c8973a"/><text x="508" y="610" font-size="10" font-weight="bold" text-anchor="middle" fill="#0f1f3d">6</text><text x="522" y="610" font-size="11.5" fill="#1a3260">Message Log — notes, warnings and errors</text>

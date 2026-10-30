@@ -231,7 +231,7 @@ function LabView({ data, id, preview }) {
       <div className="topnav">{prev && <a href={"#/lab/" + prev.id}>← {prev.id}</a>}<a href="#/labs">All labs</a>{next && <a href={"#/lab/" + next.id}>{next.id} →</a>}</div></div>
       <div className="ph-tag">{l.id}</div></div>
     {!l.enabled && !preview ? <div className="locked-box"><p style={{ fontSize: 26 }}>🔒</p><p>This lab has not been released yet.</p></div> : !src ? <p>Loading…</p> : <>
-      <div className="with-rail"><div>
+      <div><div>
       <Content md={intro} />
       {steps.length > 0 && <div className="lab-wrap">
         <div className="steplist"><div className="pg">{done.length} / {steps.length} steps done<div className="bar"><i style={{ width: 100 * done.length / steps.length + "%" }} /></div></div>
@@ -242,7 +242,7 @@ function LabView({ data, id, preview }) {
       </div>}
       <div id="lab-outro"><Content md={outro} /></div>
       <div className="pager">{prev ? <a href={"#/lab/" + prev.id}><small>← PREVIOUS LAB</small>{prev.id} · {prev.title}</a> : <span />}{next ? <a href={"#/lab/" + next.id} style={{ textAlign: "right" }}><small>NEXT LAB →</small>{next.id} · {next.title}</a> : <span />}</div>
-      </div><aside className="rail"><LabRail data={data} cur={l.id} preview={preview} title="All labs" /><SoftRail data={data} /></aside></div>
+      </div></div>
     </>}
   </div>;
 }
