@@ -502,4 +502,446 @@ function D8() {
   </Box>;
 }
 
-export const WIDGETS = { ...ILLOS, waterbudget: WaterBudget, globalwater: GlobalWater, precip: PrecipExplorer, tipping: TippingBucket, network: GaugeNetwork, dmc: DoubleMass, thiessen: Thiessen, missing: MissingData, storm: StormExplorer, movavg: MovingAverage, risk: RiskCalc, idf: WeibullIDF, d8: D8 };
+/* ============ Unit II Widgets ============ */
+
+/* Horton curve fitter & infiltration capacity */
+function HortonFit() {
+  const [f0, setF0] = useState(60);
+  const [fc, setFc] = useState(10);
+  const [kh, setKh] = useState(1.2);
+  const [intensity, setIntensity] = useState(35);
+  const [tMax, setTMax] = useState(4);
+
+  const ptsF = [];
+  const steps = 40;
+  for (let i = 0; i <= steps; i++) {
+    const t = (i / steps) * tMax;
+    const ft = fc + (f0 - fc) * Math.exp(-kh * t);
+    ptsF.push([t, ft]);
+  }
+
+  let tp = null;
+  if (intensity > fc && intensity < f0) {
+    tp = -Math.log((intensity - fc) / (f0 - fc)) / kh;
+  } else if (intensity >= f0) {
+    tp = 0;
+  }
+
+  const f1hr = fc + (f0 - fc) * Math.exp(-kh * 1);
+  const Ftotal = fc * tMax + ((f0 - fc) / kh) * (1 - Math.exp(-kh * tMax));
+
+  return (
+    <Box title="Horton's infiltration model & curve fitter">
+      <div className="wg-row">
+        <div className="wg-col" style={{ flex: "1 1 340px" }}>
+          <Plot
+            w={460}
+            h={250}
+            x={[0, tMax]}
+            y={[0, Math.max(f0 * 1.15, intensity * 1.15, 60)]}
+            xLabel="Time t (hours)"
+            yLabel="Infiltration capacity f(t) & Rain i (mm/h)"
+          >
+            {(sx, sy) => (
+              <>
+                <line
+                  x1={sx(0)}
+                  x2={sx(tMax)}
+                  y1={sy(intensity)}
+                  y2={sy(intensity)}
+                  stroke={C.river}
+                  strokeWidth="2.5"
+                  strokeDasharray="5 3"
+                />
+                <path
+                  d={path(ptsF, sx, sy)}
+                  fill="none"
+                  stroke={C.green}
+                  strokeWidth="3"
+                />
+                {tp !== null && tp >= 0 && tp <= tMax && (
+                  <g>
+                    <line
+                      x1={sx(tp)}
+                      x2={sx(tp)}
+                      y1={sy(0)}
+                      y2={sy(intensity)}
+                      stroke={C.warn}
+                      strokeWidth="1.5"
+                      strokeDasharray="3 3"
+                    />
+                    <circle cx={sx(tp)} cy={sy(intensity)} r="5" fill={C.warn} />
+                    <text
+                      x={sx(tp) + 6}
+                      y={sy(intensity) - 6}
+                      fontSize="10"
+                      fill={C.warn}
+                      fontWeight="600"
+                    >
+                      tp = {tp.toFixed(2)} h
+                    </text>
+                  </g>
+                )}
+              </>
+            )}
+          </Plot>
+          <Legend
+            items={[
+              [C.green, "Infiltration capacity f(t)"],
+              [C.river, `Rain intensity i = ${intensity} mm/h`, true],
+              [C.warn, "Ponding start (tp)"]
+            ]}
+          />
+        </div>
+        <div className="wg-col">
+          <label className="f">
+            Initial capacity f0: <b>{f0} mm/h</b>
+            <input
+              type="range"
+              min="20"
+              max="150"
+              step="5"
+              value={f0}
+              onChange={e => setF0(+e.target.value)}
+            />
+          </label>
+          <label className="f">
+            Final constant capacity fc: <b>{fc} mm/h</b>
+            <input
+              type="range"
+              min="2"
+              max="30"
+              step="1"
+              value={fc}
+              onChange={e => setFc(+e.target.value)}
+            />
+          </label>
+          <label className="f">
+            Decay constant kh: <b>{kh.toFixed(2)} h⁻¹</b>
+            <input
+              type="range"
+              min="0.2"
+              max="3.0"
+              step="0.1"
+              value={kh}
+              onChange={e => setKh(+e.target.value)}
+            />
+          </label>
+          <label className="f">
+            Rainfall intensity i: <b>{intensity} mm/h</b>
+            <input
+              type="range"
+              min="5"
+              max="100"
+              step="5"
+              value={intensity}
+              onChange={e => setIntensity(+e.target.value)}
+            />
+          </label>
+          <div className="kpis">
+            <Kpi v={f1hr.toFixed(1) + " mm/h"} l="Rate at t = 1 hr" />
+            <Kpi v={Ftotal.toFixed(1) + " mm"} l={`Total F(${tMax}h)`} />
+            <Kpi
+              v={tp !== null ? tp.toFixed(2) + " h" : "No runoff (i ≤ fc)"}
+              l="Ponding time tp"
+              tone={tp !== null ? "good" : ""}
+            />
+          </div>
+          <p className="note">
+            When rainfall intensity $i$ exceeds infiltration capacity $f(t)$ after $t_p$, surface ponding and runoff begin. The area under $f(t)$ represents total infiltration depth.
+          </p>
+        </div>
+      </div>
+    </Box>
+  );
+}
+
+/* phi-index & W-index finder on a storm hyetograph */
+function PhiIndex() {
+  const [rain] = useState([12, 28, 48, 36, 22, 10]);
+  const [phi, setPhi] = useState(20);
+  const [ia, setIa] = useState(5);
+
+  const totalP = sum(rain);
+  const excess = rain.map(p => Math.max(0, p - phi));
+  const totalR = sum(excess);
+  const te = rain.filter(p => p > phi).length;
+  const totalLoss = totalP - totalR;
+  const tr = rain.length;
+  const wIndex = Math.max(0, (totalP - totalR - ia) / tr);
+
+  const maxBar = Math.max(...rain, phi, 50);
+
+  return (
+    <Box title="φ-index and W-index finder on a storm hyetograph">
+      <div className="wg-row">
+        <div className="wg-col" style={{ flex: "1 1 360px" }}>
+          <svg viewBox="0 0 460 250" style={{ background: "#fff", border: "1px solid #e8e4dc", borderRadius: 6 }}>
+            {[0, 10, 20, 30, 40, 50].map(yVal => {
+              const y = 210 - (yVal / maxBar) * 180;
+              return (
+                <g key={yVal}>
+                  <line x1="45" x2="440" y1={y} y2={y} stroke="#eee" />
+                  <text x="38" y={y + 4} fontSize="10" textAnchor="end" fill="#777">{yVal}</text>
+                </g>
+              );
+            })}
+            {rain.map((val, i) => {
+              const bw = 46;
+              const x = 60 + i * 62;
+              const barH = (val / maxBar) * 180;
+              const phiH = Math.min(barH, (phi / maxBar) * 180);
+              const excH = Math.max(0, barH - phiH);
+
+              return (
+                <g key={i}>
+                  <rect x={x} y={210 - phiH} width={bw} height={phiH} fill="#2d6a4f" opacity="0.8" rx="2" />
+                  {excH > 0 && (
+                    <rect x={x} y={210 - barH} width={bw} height={excH} fill="#1a5f7a" rx="2" />
+                  )}
+                  <text x={x + bw / 2} y={210 - barH - 6} fontSize="11" textAnchor="middle" fontWeight="600" fill="#0f1f3d">
+                    {val}
+                  </text>
+                  <text x={x + bw / 2} y="226" fontSize="11" textAnchor="middle" fill="#555">
+                    H{i + 1}
+                  </text>
+                </g>
+              );
+            })}
+            {(() => {
+              const yPhi = 210 - (phi / maxBar) * 180;
+              return (
+                <g>
+                  <line x1="45" x2="440" y1={yPhi} y2={yPhi} stroke="#c8973a" strokeWidth="2.5" strokeDasharray="5 3" />
+                  <text x="435" y={yPhi - 5} fontSize="11" textAnchor="end" fill="#c8973a" fontWeight="700">
+                    φ = {phi} mm/h
+                  </text>
+                </g>
+              );
+            })()}
+            <text x="18" y="110" transform="rotate(-90 18 110)" fontSize="11" fill="#1a3260" fontWeight="600" textAnchor="middle">Rainfall intensity (mm/h)</text>
+          </svg>
+          <Legend
+            items={[
+              ["#1a5f7a", "Rainfall excess (Direct runoff)"],
+              ["#2d6a4f", "Infiltration loss (≤ φ)"],
+              ["#c8973a", "φ-index line", true]
+            ]}
+          />
+        </div>
+        <div className="wg-col">
+          <label className="f">
+            φ-index threshold: <b>{phi} mm/h</b>
+            <input type="range" min="0" max="45" step="1" value={phi} onChange={e => setPhi(+e.target.value)} />
+          </label>
+          <label className="f">
+            Initial abstraction Ia (for W-index): <b>{ia} mm</b>
+            <input type="range" min="0" max="25" step="1" value={ia} onChange={e => setIa(+e.target.value)} />
+          </label>
+          <div className="kpis">
+            <Kpi v={totalP + " mm"} l="Total storm P" />
+            <Kpi v={totalR + " mm"} l="Direct runoff R" tone={totalR > 0 ? "good" : ""} />
+            <Kpi v={totalLoss + " mm"} l="Total losses" />
+            <Kpi v={te + " h"} l="Effective duration te" />
+            <Kpi v={wIndex.toFixed(2) + " mm/h"} l="W-index" />
+          </div>
+          <p className="note">
+            The <b>φ-index</b> is the constant infiltration rate above which rainfall depth equals runoff depth ($R$). The <b>W-index</b> accounts for initial abstraction ($I_a$) averaged over the entire storm duration ($t_r$).
+          </p>
+        </div>
+      </div>
+    </Box>
+  );
+}
+
+/* SCS-CN Calculator */
+function ScsCn() {
+  const [cn, setCn] = useState(75);
+  const [p, setP] = useState(100);
+  const [lambda, setLambda] = useState(0.2);
+
+  const S = 25400 / cn - 254;
+  const Ia = lambda * S;
+  const Q = p > Ia ? Math.pow(p - Ia, 2) / (p - Ia + S) : 0;
+  const Cr = p > 0 ? Q / p : 0;
+
+  const cn1 = cn / (2.281 - 0.01281 * cn);
+  const cn3 = cn / (0.427 + 0.00573 * cn);
+
+  const pVals = [10, 25, 50, 75, 100, 125, 150, 200];
+  const qCurve = pVals.map(pv => [pv, pv > Ia ? Math.pow(pv - Ia, 2) / (pv - Ia + S) : 0]);
+
+  return (
+    <Box title="SCS Curve Number (CN) runoff calculator">
+      <div className="wg-row">
+        <div className="wg-col" style={{ flex: "1 1 340px" }}>
+          <Plot
+            w={460}
+            h={240}
+            x={[0, 200]}
+            y={[0, 180]}
+            xLabel="Storm rainfall P (mm)"
+            yLabel="Direct runoff Q (mm)"
+          >
+            {(sx, sy) => (
+              <>
+                <line x1={sx(0)} y1={sy(0)} x2={sx(180)} y2={sy(180)} stroke="#ccc" strokeDasharray="3 3" />
+                <path d={path(qCurve, sx, sy)} fill="none" stroke={C.river} strokeWidth="3" />
+                <circle cx={sx(p)} cy={sy(Q)} r="6" fill={C.gold} stroke="#fff" strokeWidth="2" />
+                <text x={sx(p) + 8} y={sy(Q) + 4} fontSize="11" fill={C.navy} fontWeight="700">
+                  Q = {Q.toFixed(1)} mm
+                </text>
+              </>
+            )}
+          </Plot>
+          <Legend
+            items={[
+              [C.river, `Runoff curve (CN = ${cn})`],
+              [C.gold, `Current event: P = ${p} mm, Q = ${Q.toFixed(1)} mm`],
+              ["#ccc", "100% runoff line (Q = P)", true]
+            ]}
+          />
+        </div>
+        <div className="wg-col">
+          <label className="f">
+            Curve Number CN (AMC-II): <b>{cn}</b>
+            <input type="range" min="40" max="98" step="1" value={cn} onChange={e => setCn(+e.target.value)} />
+          </label>
+          <div style={{ display: "flex", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
+            {[["Group A (Forest/Sand)", 55], ["Group B (Agricultural)", 70], ["Group C (Clay Loam)", 80], ["Group D / Urban", 90]].map(([lbl, val]) => (
+              <button key={lbl} className="btn ghost" style={{ fontSize: 11, padding: "3px 8px" }} onClick={() => setCn(val)}>
+                {lbl}
+              </button>
+            ))}
+          </div>
+          <label className="f">
+            Storm rainfall P: <b>{p} mm</b>
+            <input type="range" min="10" max="250" step="5" value={p} onChange={e => setP(+e.target.value)} />
+          </label>
+          <label className="f">
+            Abstraction ratio λ: <b>{lambda}</b>
+            <div className="seg" style={{ display: "flex", marginTop: 4 }}>
+              {[0.1, 0.2, 0.3].map(v => (
+                <button key={v} className={lambda === v ? "on" : ""} onClick={() => setLambda(v)}>
+                  λ = {v} {v === 0.2 ? "(SCS standard)" : "(Indian watersheds)"}
+                </button>
+              ))}
+            </div>
+          </label>
+          <div className="kpis">
+            <Kpi v={S.toFixed(1) + " mm"} l="Max retention S" />
+            <Kpi v={Ia.toFixed(1) + " mm"} l="Initial abstraction Ia" />
+            <Kpi v={Q.toFixed(1) + " mm"} l="Runoff depth Q" tone="good" />
+            <Kpi v={(Cr * 100).toFixed(1) + " %"} l="Runoff coeff Q/P" />
+          </div>
+          <p className="note">
+            Equivalent CN values for antecedent moisture: <b>AMC-I (Dry):</b> {cn1.toFixed(0)} · <b>AMC-III (Wet):</b> {cn3.toFixed(0)}.
+          </p>
+        </div>
+      </div>
+    </Box>
+  );
+}
+
+/* Penman & Blaney-Criddle ET Calculator */
+function PenCalc() {
+  const [method, setMethod] = useState("penman");
+  const [temp, setTemp] = useState(28);
+  const [rh, setRh] = useState(65);
+  const [u2, setU2] = useState(120);
+  const [hn, setHn] = useState(5.2);
+  const [pPct, setPPct] = useState(8.5);
+  const [kCrop, setKCrop] = useState(0.85);
+
+  const ew = 4.584 * Math.exp((17.27 * temp) / (temp + 237.3));
+  const ea = ew * (rh / 100);
+  const slopeA = (4098 * ew) / Math.pow(temp + 237.3, 2);
+  const gamma = 0.49;
+  const Ea = 0.35 * (1 + u2 / 160) * (ew - ea);
+  const petPenman = (slopeA * hn + Ea * gamma) / (slopeA + gamma);
+
+  const petBCMonthly = 2.54 * kCrop * (pPct * temp / 100) * 10;
+  const petBCDaily = petBCMonthly / 30;
+
+  return (
+    <Box title="Evapotranspiration calculator (Penman & Blaney-Criddle)">
+      <div style={{ marginBottom: 12 }}>
+        <Seg value={method} onChange={setMethod} options={[["penman", "Penman combination method"], ["bc", "Blaney-Criddle method"]]} />
+      </div>
+      {method === "penman" ? (
+        <div className="wg-row">
+          <div className="wg-col">
+            <label className="f">Mean temperature: <b>{temp} °C</b>
+              <input type="range" min="10" max="42" step="1" value={temp} onChange={e => setTemp(+e.target.value)} />
+            </label>
+            <label className="f">Relative humidity RH: <b>{rh} %</b>
+              <input type="range" min="20" max="95" step="1" value={rh} onChange={e => setRh(+e.target.value)} />
+            </label>
+            <label className="f">Wind speed at 2m: <b>{u2} km/day</b> ({(u2 / 24).toFixed(1)} km/h)
+              <input type="range" min="30" max="350" step="10" value={u2} onChange={e => setU2(+e.target.value)} />
+            </label>
+            <label className="f">Net radiation Hn: <b>{hn} mm/day</b>
+              <input type="range" min="2.0" max="8.0" step="0.2" value={hn} onChange={e => setHn(+e.target.value)} />
+            </label>
+          </div>
+          <div className="wg-col">
+            <div className="kpis">
+              <Kpi v={petPenman.toFixed(2) + " mm/day"} l="Penman PET" tone="good" />
+              <Kpi v={(petPenman * 30).toFixed(0) + " mm"} l="Monthly PET (30 d)" />
+              <Kpi v={ew.toFixed(2) + " mm Hg"} l="Sat. vapour press. ew" />
+              <Kpi v={ea.toFixed(2) + " mm Hg"} l="Actual vapour press. ea" />
+              <Kpi v={Ea.toFixed(2) + " mm/day"} l="Aerodynamic term Ea" />
+            </div>
+            <p className="note">
+              Penman combines the energy-budget term (A·Hn) with the mass-transfer aerodynamic term (Ea·γ). At higher temperatures, the radiation slope A dominates over the psychrometric constant γ.
+            </p>
+          </div>
+        </div>
+      ) : (
+        <div className="wg-row">
+          <div className="wg-col">
+            <label className="f">Mean temperature t: <b>{temp} °C</b>
+              <input type="range" min="10" max="42" step="1" value={temp} onChange={e => setTemp(+e.target.value)} />
+            </label>
+            <label className="f">Monthly daytime percentage p: <b>{pPct} %</b>
+              <input type="range" min="6.5" max="11.0" step="0.1" value={pPct} onChange={e => setPPct(+e.target.value)} />
+            </label>
+            <label className="f">Crop growth coefficient k: <b>{kCrop}</b>
+              <input type="range" min="0.4" max="1.3" step="0.05" value={kCrop} onChange={e => setKCrop(+e.target.value)} />
+            </label>
+          </div>
+          <div className="wg-col">
+            <div className="kpis">
+              <Kpi v={petBCDaily.toFixed(2) + " mm/day"} l="Daily ET (approx)" tone="good" />
+              <Kpi v={petBCMonthly.toFixed(1) + " mm/mo"} l="Monthly crop ET" />
+            </div>
+            <p className="note">
+              The empirical Blaney-Criddle formula estimates monthly consumptive use: PET = 2.54 · k · (p · t / 100) cm/month, widely used for irrigation water scheduling where radiation and humidity data are unavailable.
+            </p>
+          </div>
+        </div>
+      )}
+    </Box>
+  );
+}
+
+export const WIDGETS = {
+  ...ILLOS,
+  waterbudget: WaterBudget,
+  globalwater: GlobalWater,
+  precip: PrecipExplorer,
+  tipping: TippingBucket,
+  network: GaugeNetwork,
+  dmc: DoubleMass,
+  thiessen: Thiessen,
+  missing: MissingData,
+  storm: StormExplorer,
+  movavg: MovingAverage,
+  risk: RiskCalc,
+  idf: WeibullIDF,
+  d8: D8,
+  hortonfit: HortonFit,
+  phiindex: PhiIndex,
+  scscn: ScsCn,
+  pencalc: PenCalc
+};
