@@ -38,48 +38,96 @@ function HydroCycle() {
   const hi = id => sel === id ? P.gold : "#0f1f3d";
   const d = PROC[sel];
   return <Illo title="The hydrologic cycle — click any process" kind="Interactive">
-    <svg viewBox="0 0 960 500" className={anim ? "" : "paused"}>
-      <defs><linearGradient id="hcsky" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#d6eaf3" /><stop offset="1" stopColor={P.sky2} /></linearGradient>
-        <linearGradient id="hcsea" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor={P.sea2} /><stop offset="1" stopColor="#164f66" /></linearGradient>
-        <Arrow id="ha" /><Arrow id="hag" color={P.gold} /><Arrow id="hab" color="#1f6f8f" /></defs>
+    <svg viewBox="0 0 960 500" className={"hc " + (anim ? "" : "paused")}>
+      <defs>
+        <linearGradient id="hcsky" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#7fb6d6" /><stop offset=".55" stopColor="#cfe5ef" /><stop offset="1" stopColor="#f3efe2" /></linearGradient>
+        <radialGradient id="hcsun"><stop offset="0" stopColor="#fff7d6" /><stop offset=".35" stopColor="#ffe08a" /><stop offset=".6" stopColor="#ffd56b" stopOpacity=".55" /><stop offset="1" stopColor="#ffd56b" stopOpacity="0" /></radialGradient>
+        <linearGradient id="hcsea" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#3f93b5" /><stop offset=".35" stopColor="#1f6f8f" /><stop offset="1" stopColor="#0d3b52" /></linearGradient>
+        <linearGradient id="hcfar" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#9db6c6" /><stop offset="1" stopColor="#c7d6dd" /></linearGradient>
+        <linearGradient id="hcmtn" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stopColor="#7d9a6a" /><stop offset=".5" stopColor="#5f7f4c" /><stop offset="1" stopColor="#4b6a3c" /></linearGradient>
+        <linearGradient id="hcshade" x1="0" x2="1"><stop offset="0" stopColor="#000" stopOpacity="0" /><stop offset="1" stopColor="#1d2b17" stopOpacity=".35" /></linearGradient>
+        <linearGradient id="hcplain" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#a9c784" /><stop offset="1" stopColor="#86a865" /></linearGradient>
+        <linearGradient id="hcsoil" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#b8875a" /><stop offset="1" stopColor="#8f6a46" /></linearGradient>
+        <linearGradient id="hcgw" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#7fb3cc" /><stop offset="1" stopColor="#4d88a6" /></linearGradient>
+        <linearGradient id="hcriver" x1="1" x2="0"><stop offset="0" stopColor="#6fb4d0" /><stop offset="1" stopColor="#2f86a8" /></linearGradient>
+        <radialGradient id="hccl" cx=".45" cy=".35" r=".75"><stop offset="0" stopColor="#ffffff" /><stop offset=".7" stopColor="#eef3f6" /><stop offset="1" stopColor="#c9d6de" /></radialGradient>
+        <radialGradient id="hcclD" cx=".45" cy=".3" r=".8"><stop offset="0" stopColor="#c3ccd3" /><stop offset=".6" stopColor="#8c99a4" /><stop offset="1" stopColor="#5f6d78" /></radialGradient>
+        <linearGradient id="hcshaft" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#6c7e8c" stopOpacity=".55" /><stop offset="1" stopColor="#6c7e8c" stopOpacity="0" /></linearGradient>
+        <pattern id="hcgrain" width="14" height="10" patternUnits="userSpaceOnUse"><circle cx="3" cy="3" r="1.3" fill="#7a5634" opacity=".45" /><circle cx="10" cy="7" r="1" fill="#e2c39b" opacity=".5" /></pattern>
+        <pattern id="hcpore" width="16" height="12" patternUnits="userSpaceOnUse"><circle cx="4" cy="4" r="2.6" fill="#c7b08e" opacity=".55" /><circle cx="12" cy="9" r="2.2" fill="#b39a76" opacity=".5" /></pattern>
+        <pattern id="hcrock" width="40" height="18" patternUnits="userSpaceOnUse"><path d="M0 9h40M20 0v9M0 18h40M10 9v9M30 9v9" stroke="#6e655a" strokeWidth="1" opacity=".6" /></pattern>
+        <filter id="hcblur" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="1.4" /></filter>
+        <filter id="hcblur4" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4" /></filter>
+        <filter id="hcshadow" x="-20%" y="-20%" width="140%" height="160%"><feDropShadow dx="0" dy="5" stdDeviation="4" floodColor="#42576a" floodOpacity=".25" /></filter>
+        <clipPath id="hcseaclip"><rect x="0" y="318" width="272" height="182" /></clipPath>
+        <Arrow id="ha" /><Arrow id="hag" color={P.gold} /><Arrow id="hab" color="#1f6f8f" />
+      </defs>
       <rect width="960" height="500" fill="url(#hcsky)" />
-      <circle cx="890" cy="62" r="30" fill={P.sun} /><g stroke={P.sun} strokeWidth="3">{[0, 45, 90, 135, 180, 225, 270, 315].map(a => <line key={a} x1={890 + 38 * Math.cos(a * Math.PI / 180)} y1={62 + 38 * Math.sin(a * Math.PI / 180)} x2={890 + 50 * Math.cos(a * Math.PI / 180)} y2={62 + 50 * Math.sin(a * Math.PI / 180)} />)}</g>
-      {/* ocean */}
-      <path d="M0 330 L270 330 L270 500 L0 500Z" fill="url(#hcsea)" />
-      <path d="M0 330 q15 -6 30 0 t30 0 t30 0 t30 0 t30 0 t30 0 t30 0 t30 0 t30 0" stroke="#bfe0ec" fill="none" strokeWidth="2" />
+      {/* sun */}
+      <circle cx="880" cy="70" r="80" fill="url(#hcsun)" />
+      <circle cx="880" cy="70" r="26" fill="#fff4c2" />
+      {/* distant hills (haze) */}
+      <path d="M420 300 L470 250 L520 262 L575 205 L625 222 L690 150 L735 175 L790 120 L845 160 L900 132 L960 170 L960 320 L420 320Z" fill="url(#hcfar)" opacity=".85" />
+      {/* clouds: fair-weather over the sea, rain cloud over the hills */}
+      <g className="hc-drift" filter="url(#hcshadow)">
+        {[[-52, 8, 30, 18], [-18, -6, 34, 26], [20, -2, 32, 24], [52, 10, 26, 16], [0, 14, 70, 14]].map(([x, y, rx, ry], i) => <ellipse key={i} cx={150 + x} cy={110 + y} rx={rx} ry={ry} fill="url(#hccl)" />)}
+      </g>
+      <g className="hc-drift2" filter="url(#hcshadow)">
+        {[[-80, 10, 38, 22], [-40, -10, 44, 32], [10, -16, 48, 36], [58, -4, 42, 28], [96, 10, 32, 20], [10, 16, 110, 18]].map(([x, y, rx, ry], i) => <ellipse key={i} cx={650 + x} cy={70 + y} rx={rx} ry={ry} fill="url(#hcclD)" />)}
+      </g>
+      <g className="hc-drift3" opacity=".9">{[[-30, 0, 26, 12], [0, -8, 30, 16], [30, 2, 24, 11]].map(([x, y, rx, ry], i) => <ellipse key={i} cx={360 + x} cy={58 + y} rx={rx} ry={ry} fill="url(#hccl)" />)}</g>
+      {/* rain shaft and drops */}
+      <path d="M575 92 L725 92 L700 230 L590 250Z" fill="url(#hcshaft)" filter="url(#hcblur4)" />
+      {anim ? <g opacity=".85">{Array.from({ length: 26 }).map((_, i) => { const x = 585 + (i * 37) % 140, y = 92 + (i * 23) % 40; return <line key={i} className="hc-rain" style={{ animationDelay: (i * 0.11 % 1.1) + "s" }} x1={x} y1={y} x2={x - 3} y2={y + 13} stroke="#3c7fa3" strokeWidth="1.6" strokeLinecap="round" />; })}</g>
+        : <g>{[600, 630, 660, 690].map(x => <line key={x} x1={x} y1="104" x2={x - 5} y2="140" stroke="#2f86a8" strokeWidth="2" />)}</g>}
+      {/* ocean with moving waves */}
+      <path d="M0 326 L272 326 L272 500 L0 500Z" fill="url(#hcsea)" />
+      <g clipPath="url(#hcseaclip)"><g className="hc-wave">{[0, 1].map(k => <path key={k} d={`M${-60 + k * 0} ${330 + k * 14} ` + Array.from({ length: 12 }).map(() => "q15 -5 30 0 t30 0").join(" ")} stroke={k ? "#2a7a9b" : "#cfe9f3"} strokeWidth={k ? 1.5 : 2} fill="none" opacity={k ? 0.8 : 0.9} />)}</g></g>
+      {[[40, 360], [120, 352], [200, 368], [80, 395]].map(([x, y], i) => <ellipse key={i} cx={x} cy={y} rx="14" ry="1.6" fill="#e9f6fb" opacity=".55" className="hc-glint" style={{ animationDelay: i * 0.7 + "s" }} />)}
       <text x="40" y="470" fontSize="15" fill="#e7f2f7" fontWeight="600">Ocean</text>
-      {/* ground: groundwater zone, soil, land */}
-      <path d="M250 330 L330 322 L420 305 L520 285 L600 238 L680 168 L760 116 L840 152 L960 210 L960 500 L250 500Z" fill={P.soil} />
-      <path d="M262 352 L420 335 L560 318 L700 290 L820 270 L960 262 L960 500 L262 500Z" fill={P.gw} opacity=".9" />
-      <path d="M262 352 L420 335 L560 318 L700 290 L820 270 L960 262" stroke="#2f86a8" strokeWidth="2" strokeDasharray="7 5" fill="none" />
-      <text x="800" y="258" fontSize="11.5" fill="#1f6f8f">water table</text>
-      <text x="720" y="330" fontSize="12.5" fill="#164f66" fontWeight="600">Groundwater (saturated zone)</text>
-      <text x="610" y="282" fontSize="11.5" fill="#6b4f2a">unsaturated zone</text>
-      <rect x="250" y="470" width="710" height="30" fill={P.rock} /><text x="830" y="490" fontSize="11" fill="#f4f2ee">impervious rock</text>
-      <path d="M250 330 L330 322 L420 305 L520 285 L600 238 L680 168 L760 116 L840 152 L960 210 L960 228 L840 172 L760 136 L680 186 L600 254 L520 299 L420 317 L330 332 L250 340Z" fill={P.land} />
-      <path d="M720 140 L760 116 L800 135 L780 140 L760 128 Z" fill="#f4f2ee" />
-      {/* lake and river */}
-      <ellipse cx="470" cy="300" rx="44" ry="8" fill={P.sea2} />
-      <path d="M706 172 C650 232 590 250 540 278 S400 312 262 331" stroke={P.sea2} strokeWidth="6" fill="none" strokeLinecap="round" />
-      <path d="M706 172 C650 232 590 250 540 278 S400 312 262 331" stroke="#bfe0ec" strokeWidth="2" fill="none" className={anim ? "anim-flow" : ""} />
-      <Tree x={360} y={308} s={1.1} /><Tree x={395} y={302} s={0.9} /><Tree x={575} y={250} s={0.9} />
-      {/* clouds */}
-      <Cloud x={150} y={110} s={0.9} /><Cloud x={650} y={70} s={1.1} fill="#f2f5f7" />
-      {/* evaporation */}
-      {anim && [70, 130, 190].map((x, i) => <path key={x} className="anim-rise" style={{ animationDelay: i * 0.8 + "s" }} d={`M${x} 315 q8 -10 0 -20 q-8 -10 0 -20 q8 -10 0 -20`} stroke="#5a9fbf" strokeWidth="2.2" fill="none" />)}
+      {/* ground cross-section: soil, unsaturated zone, groundwater, bedrock */}
+      <path d="M250 330 L330 322 L420 305 L520 285 L600 238 L680 168 L760 116 L840 152 L960 210 L960 500 L250 500Z" fill="url(#hcsoil)" />
+      <path d="M250 330 L330 322 L420 305 L520 285 L600 238 L680 168 L760 116 L840 152 L960 210 L960 500 L250 500Z" fill="url(#hcpore)" />
+      <path d="M262 352 L420 335 L560 318 L700 290 L820 270 L960 262 L960 500 L262 500Z" fill="url(#hcgw)" />
+      <path d="M262 352 L420 335 L560 318 L700 290 L820 270 L960 262 L960 500 L262 500Z" fill="url(#hcgrain)" opacity=".7" />
+      {anim && <g>{Array.from({ length: 14 }).map((_, i) => { const y = 372 + (i % 4) * 22; return <circle key={i} className="hc-seep" style={{ animationDelay: (i * 0.9) + "s" }} cx={930 - (i * 41) % 120} cy={y} r="2.2" fill="#e3f3fa" />; })}</g>}
+      <path d="M262 352 L420 335 L560 318 L700 290 L820 270 L960 262" stroke="#1f6f8f" strokeWidth="2" strokeDasharray="7 5" fill="none" />
+      <text x="800" y="258" fontSize="11.5" fill="#123d52" fontWeight="600">water table</text>
+      <text x="720" y="330" fontSize="12.5" fill="#0d3b52" fontWeight="700">Groundwater (saturated zone)</text>
+      <text x="610" y="282" fontSize="11.5" fill="#4a3018" fontWeight="600">unsaturated zone</text>
+      <rect x="250" y="466" width="710" height="34" fill="#8d8273" /><rect x="250" y="466" width="710" height="34" fill="url(#hcrock)" />
+      <text x="830" y="488" fontSize="11" fill="#f4f2ee">impervious rock</text>
+      {/* land surface: plain and mountain with shading and snow */}
+      <path d="M250 330 L330 322 L420 305 L520 285 L600 238 L680 168 L760 116 L840 152 L960 210 L960 228 L840 172 L760 136 L680 186 L600 254 L520 299 L420 317 L330 332 L250 340Z" fill="url(#hcplain)" />
+      <path d="M560 262 L600 238 L680 168 L760 116 L840 152 L960 210 L960 232 L860 190 L780 160 L700 200 L620 250Z" fill="url(#hcmtn)" />
+      <path d="M760 116 L840 152 L960 210 L960 232 L860 190 L780 160Z" fill="url(#hcshade)" />
+      <path d="M722 140 L760 116 L800 134 L788 142 L774 134 L760 146 L746 136 Z" fill="#f7f9fb" />
+      <path d="M760 116 L800 134 L788 142 L774 134Z" fill="#d9e2ea" />
+      {/* lake with reflection, river with flowing water */}
+      <ellipse cx="470" cy="300" rx="46" ry="8.5" fill="#2f86a8" /><ellipse cx="462" cy="298" rx="24" ry="2.2" fill="#d6eef7" opacity=".7" />
+      <path d="M706 172 C650 232 590 250 540 278 S400 312 262 331" stroke="#1f6f8f" strokeWidth="8" fill="none" strokeLinecap="round" />
+      <path d="M706 172 C650 232 590 250 540 278 S400 312 262 331" stroke="url(#hcriver)" strokeWidth="5" fill="none" strokeLinecap="round" />
+      <path d="M706 172 C650 232 590 250 540 278 S400 312 262 331" stroke="#e3f3fa" strokeWidth="1.6" fill="none" className={anim ? "anim-flow" : ""} opacity=".9" />
+      {/* vegetation: forest on the slope, trees on the plain, a village */}
+      {[[330, 316, 1.05], [352, 312, 0.85], [372, 309, 1.15], [398, 304, 0.95], [575, 250, 0.9], [598, 240, 0.75], [622, 222, 0.8], [645, 202, 0.7], [662, 188, 0.65]].map(([x, y, k], i) => <g key={i} transform={`translate(${x} ${y}) scale(${k})`}>
+        <ellipse cx="0" cy="18" rx="14" ry="3" fill="#2f3f22" opacity=".25" /><rect x="-2.5" y="0" width="5" height="18" fill="#6b4a2b" />
+        {i % 3 === 1 ? <path d="M0 -34 L14 0 L-14 0Z M0 -24 L17 8 L-17 8Z" fill="#3f6b38" /> : <><circle cx="0" cy="-12" r="15" fill="#4f7d3e" /><circle cx="-8" cy="-6" r="10" fill="#5f8f4a" /><circle cx="8" cy="-8" r="10" fill="#466f37" /><circle cx="-3" cy="-17" r="7" fill="#79a85e" opacity=".8" /></>}
+      </g>)}
+      <g transform="translate(276 318)"><rect x="0" y="0" width="16" height="10" fill="#e9e1d2" /><path d="M-2 0 L8 -8 L18 0Z" fill="#a4553a" /><rect x="22" y="2" width="12" height="8" fill="#efe7da" /><path d="M20 2 L28 -4 L36 2Z" fill="#8c4a33" /></g>
+      {/* evaporation from the ocean and lake, transpiration from the forest */}
+      {anim && [60, 105, 150, 195, 240].map((x, i) => <path key={x} className="hc-wisp" style={{ animationDelay: i * 0.7 + "s" }} d={`M${x} 318 q9 -12 0 -24 q-9 -12 0 -24 q9 -12 0 -24`} stroke="#ffffff" strokeWidth="3" fill="none" strokeLinecap="round" filter="url(#hcblur)" />)}
+      {anim && [455, 485].map((x, i) => <path key={x} className="hc-wisp" style={{ animationDelay: 1 + i * 1.1 + "s" }} d={`M${x} 292 q6 -9 0 -18 q-6 -9 0 -18`} stroke="#ffffff" strokeWidth="2.4" fill="none" strokeLinecap="round" filter="url(#hcblur)" />)}
+      {anim && [340, 372, 398].map((x, i) => <path key={x} className="hc-wisp" style={{ animationDelay: 0.4 + i * 0.9 + "s" }} d={`M${x} 286 q5 -8 0 -16 q-5 -8 0 -16`} stroke="#e8f6ee" strokeWidth="2.2" fill="none" strokeLinecap="round" filter="url(#hcblur)" />)}
+      {/* infiltration and percolation drops */}
+      {anim && [[512, 296], [528, 293], [632, 262], [648, 256]].map(([x, y], i) => <circle key={i} className="hc-sink" style={{ animationDelay: i * 0.6 + "s" }} cx={x} cy={y} r="2.4" fill="#2f86a8" />)}
+      {/* process arrows */}
       <path d="M130 300 L130 175" stroke={hi("evap")} strokeWidth="2" markerEnd={sel === "evap" ? "url(#hag)" : "url(#ha)"} />
-      {/* transpiration */}
       <path d="M380 270 L380 205" stroke={hi("trans")} strokeWidth="2" strokeDasharray="4 3" markerEnd={sel === "trans" ? "url(#hag)" : "url(#ha)"} />
-      {/* vapour transport */}
       <path d="M235 95 C350 60 450 55 535 62" stroke={hi("adv")} strokeWidth="2" strokeDasharray="6 5" fill="none" markerEnd={sel === "adv" ? "url(#hag)" : "url(#ha)"} />
-      {/* precipitation */}
-      {anim ? <Rain x0={590} x1={720} y0={100} n={11} len={16} /> : <g>{[600, 630, 660, 690].map(x => <line key={x} x1={x} y1="104" x2={x - 5} y2="140" stroke="#2f86a8" strokeWidth="2" />)}</g>}
       <path d="M560 105 L545 165" stroke={hi("prec")} strokeWidth="2" markerEnd={sel === "prec" ? "url(#hag)" : "url(#ha)"} />
-      {/* surface runoff, infiltration, percolation */}
       <path d="M690 190 L610 248" stroke={hi("runoff")} strokeWidth="3" markerEnd={sel === "runoff" ? "url(#hag)" : "url(#ha)"} />
       <path d="M520 296 L520 322" stroke={hi("infil")} strokeWidth="2.5" markerEnd={sel === "infil" ? "url(#hag)" : "url(#ha)"} />
       <path d="M640 262 L640 298" stroke={hi("perc")} strokeWidth="2.5" strokeDasharray="4 3" markerEnd={sel === "perc" ? "url(#hag)" : "url(#ha)"} />
-      {/* groundwater flow */}
       <path d="M760 360 C620 380 450 395 300 395" stroke={hi("gw")} strokeWidth="2.5" fill="none" strokeDasharray="8 6" className={anim ? "anim-flow" : ""} markerEnd={sel === "gw" ? "url(#hag)" : "url(#ha)"} />
       {/* labels */}
       {L("evap", 130, 160, 100)}{L("cond", 150, 60, 112)}{L("adv", 390, 50, 132)}{L("prec", 520, 186, 112)}

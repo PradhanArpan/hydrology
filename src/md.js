@@ -53,7 +53,7 @@ export function renderMd(src) {
   src = src.replace(/^:::(\w+)[ \t]*(.*)\n([\s\S]*?)\n:::[ \t]*$/gm, (m, type, title, body) => {
     const inner = renderMd(body);
     if (type === "sol") return put('<details class="sol"><summary>' + inline(title || "Show solution") + "</summary>" + inner + "</details>");
-    if (type === "gallery") return put('<div class="gallery">' + inner.replace(/<\/?p>/g, "") + "</div>");
+    if (type === "gallery" || type === "photos") return put('<div class="gallery' + (type === "photos" ? " photos" : "") + '">' + inner.replace(/<\/?p>/g, "") + "</div>");
     return put('<div class="callout ' + type + '"><span class="ct">' + inline(title || type) + "</span>" + inner + "</div>");
   });
   src = src.replace(/\$\$([\s\S]+?)\$\$/g, (m, t) => put(math(t, true)).trim());
@@ -78,19 +78,36 @@ export function enhance(root) {
     div.innerHTML = '<span class="ct">' + esc(m[2] || m[1]) + "</span>" + bq.innerHTML;
     bq.replaceWith(div);
   });
-  // lone images -> figures with captions (alt text; " — " splits caption and source)
+  // lone images -> figures with captions (alt text; " — " splits caption and source).
+  // An image title that is a URL (e.g. a Wikimedia Commons file page) turns the source into a credit link.
+  const credit = (img, src) => {
+    const t = img.getAttribute("title") || "";
+    if (/^https?:/.test(t)) return ' <a class="src" href="' + esc(t) + '" target="_blank" rel="noopener">' + esc(src || "Source") + " ↗</a>";
+    return src ? ' <span class="src">' + esc(src) + "</span>" : "";
+  };
   root.querySelectorAll("p > img:only-child").forEach(img => {
     const p = img.parentElement; if (p.textContent.trim()) return;
     const fig = document.createElement("figure");
     const [cap, src] = (img.alt || "").split(" — ");
     fig.appendChild(img.cloneNode());
-    if (cap) { const fc = document.createElement("figcaption"); fc.innerHTML = esc(cap) + (src ? ' <span class="src">' + esc(src) + "</span>" : ""); fig.appendChild(fc); }
+    if (cap) { const fc = document.createElement("figcaption"); fc.innerHTML = esc(cap) + credit(img, src); fig.appendChild(fc); }
     p.replaceWith(fig);
   });
   root.querySelectorAll(".gallery > img").forEach(img => {
     const fig = document.createElement("figure"); fig.appendChild(img.cloneNode());
-    const fc = document.createElement("figcaption"); fc.textContent = (img.alt || "").split(" — ")[0]; fig.appendChild(fc);
+    const [cap, src] = (img.alt || "").split(" — ");
+    const fc = document.createElement("figcaption"); fc.innerHTML = esc(cap || "") + credit(img, src); fig.appendChild(fc);
     img.replaceWith(fig);
+  });
+  // external photos: if one cannot load, show a link to it instead of a broken image
+  root.querySelectorAll('img[src^="http"]').forEach(i => {
+    i.referrerPolicy = "no-referrer";
+    i.addEventListener("error", () => {
+      const t = i.getAttribute("title") || i.getAttribute("src");
+      const d = document.createElement("div"); d.className = "img-missing";
+      d.innerHTML = 'Photo could not load here. <a href="' + esc(t) + '" target="_blank" rel="noopener">Open it on the source site ↗</a>';
+      i.replaceWith(d);
+    });
   });
   root.querySelectorAll("img").forEach(i => {
     i.loading = "lazy";

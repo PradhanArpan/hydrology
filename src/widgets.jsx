@@ -231,39 +231,105 @@ const DMC_SLIDE = (() => {
 function DoubleMass() {
   const course = useCsv("data/U1_annual_rainfall_1991_2020.csv");
   const [ds, setDs] = useState("slide");
-  const rows = useMemo(() => ds === "slide" ? DMC_SLIDE : (course || []).map(r => ({ year: r.year, X: r.X, B: (r.A + r.B + r.C + r.D + r.E) / 5 })), [ds, course]);
-  const [k, setK] = useState(23); // break index (number of points in first segment)
-  useEffect(() => { setK(ds === "slide" ? 23 : 17); }, [ds]);
+  const [own, setOwn] = useState("");
+  const parseOwn = t => t.trim().split(/\r?\n/).map(l => l.split(/[,\t;]/).map(v => v.trim())).filter(c => c.length >= 3 && /^\d{4}$/.test(c[0]))
+    .map(c => { const v = c.slice(1).map(Number).filter(x => isFinite(x) && x > 0); return v.length >= 2 ? { year: +c[0], X: v[0], B: mean(v.slice(1, 6)) } : null; }).filter(Boolean);
+  const rows = useMemo(() => ds === "slide" ? DMC_SLIDE : ds === "own" ? parseOwn(own) : (course || []).map(r => ({ year: r.year, X: r.X, B: (r.A + r.B + r.C + r.D + r.E) / 5 })), [ds, course, own]);
+  const [step, setStep] = useState(0);
+  const [nAcc, setNAcc] = useState(1);      // rows accumulated so far (step 2)
+  const [nPlot, setNPlot] = useState(1);    // points plotted so far (step 3)
+  const [k, setK] = useState(6);            // student's break (points in first segment)
+  const [checked, setChecked] = useState(false);
   const [fix, setFix] = useState("second");
-  if (!rows.length) return <Box title="Double mass curve">Loading data…</Box>;
+  useEffect(() => { setStep(0); setNAcc(1); setNPlot(1); setK(6); setChecked(false); }, [ds, own]);
+  const dsSeg = <div className="wg-row" style={{ alignItems: "center", marginBottom: 8 }}>
+    <Seg value={ds} onChange={setDs} options={[["slide", "Slide data 1937–1972"], ["course", "Course data 1991–2020"], ["own", "Paste your data"]]} />
+  </div>;
+  const ownBox = ds === "own" && <div style={{ marginBottom: 10 }}>
+    <p className="note">Paste rows of <b>year, X, A, B, C…</b> (comma or tab separated) — e.g. <code>annual_rain.csv</code> from Lab L17, or columns copied from a spreadsheet. The first number after the year is the station under test; the rest are base stations (up to five). Years with a blank value are skipped.</p>
+    <textarea value={own} onChange={e => setOwn(e.target.value)} rows={6} style={{ width: "100%", fontFamily: "var(--mono)", fontSize: 13 }} placeholder={"year,X,A,B,C,D,E\n1991,912,880,940,905,870,951\n1992,1004,…"} />
+    <p className="note">{rows.length} usable years{rows.length > 0 && rows.length < 8 ? " — need at least 8" : ""}.</p>
+  </div>;
+  if (rows.length < 8) return <Box title="Double mass curve — step by step">{dsSeg}{ownBox || "Loading data…"}</Box>;
+  const n = rows.length;
   let cx = 0, cb = 0; const pts = rows.map(r => { cx += r.X; cb += r.B; return { ...r, cx, cb }; });
-  const kk = Math.min(Math.max(k, 3), pts.length - 3);
-  const p1 = pts[kk - 1], pe = pts[pts.length - 1];
-  const s1 = p1.cx / p1.cb, s2 = (pe.cx - p1.cx) / (pe.cb - p1.cb);
+  const seg = kk => { const p1 = pts[kk - 1], pe = pts[n - 1]; return { p1, s1: p1.cx / p1.cb, s2: (pe.cx - p1.cx) / (pe.cb - p1.cb) }; };
+  const sse = kk => { const { p1, s1, s2 } = seg(kk); return pts.reduce((e, p, i) => { const f = i < kk ? p.cb * s1 : p1.cx + (p.cb - p1.cb) * s2; return e + (p.cx - f) ** 2; }, 0); };
+  let best = 3; { let be = Infinity; for (let j = 3; j <= n - 3; j++) { const e = sse(j); if (e < be) { be = e; best = j; } } }
+  const kk = Math.min(Math.max(k, 3), n - 3);
+  const { p1, s1, s2 } = seg(kk);
   const factor = fix === "second" ? s1 / s2 : s2 / s1;
+  const isCorr = i => fix === "second" ? i >= kk : i < kk;
+  let ccx = 0; const cpts = pts.map((p, i) => { ccx += isCorr(i) ? p.X * factor : p.X; return { ...p, ccx }; });
+  const pe = pts[n - 1];
   const xm = pe.cb * 1.04, ym = Math.max(pe.cx, pe.cb * Math.max(s1, s2)) * 1.06;
-  const breakYear = pts[kk].year;
-  const order = ds === "slide" ? "accumulated from 1972 backwards" : "accumulated from 1991 forwards";
-  return <Box title="Double mass curve — find the break, correct the record">
-    <div className="wg-row" style={{ alignItems: "center", marginBottom: 8 }}>
-      <Seg value={ds} onChange={setDs} options={[["slide", "Slide data 1937–1972"], ["course", "Course data 1991–2020"]]} />
-      <span className="note" style={{ margin: 0 }}>{order}</span>
+  const r0 = v => Math.round(v).toLocaleString("en-IN");
+  const steps = ["Data", "Accumulate", "Plot", "Find the break", "Slopes", "Correct"];
+  const tbl = (shown, extra) => <div style={{ maxHeight: 300, overflow: "auto" }}><table><thead><tr><th>Year</th><th>X (mm)</th><th>Base mean (mm)</th>{extra && <><th>ΣX</th><th>ΣBase</th></>}</tr></thead><tbody>
+    {pts.map((p, i) => <tr key={p.year} style={extra && i === shown - 1 ? { background: "#fff6df" } : null}><td>{p.year}</td><td>{p.X}</td><td>{f1(p.B)}</td>{extra && <><td>{i < shown ? r0(p.cx) : ""}</td><td>{i < shown ? r0(p.cb) : ""}</td></>}</tr>)}
+  </tbody></table></div>;
+  const plot = (np, opts = {}) => <Plot w={660} h={320} x={[0, xm]} y={[0, ym]} xLabel="Cumulative mean rainfall of base stations (mm)" yLabel="Cumulative rainfall at X (mm)">{(sx, sy) => <>
+    {opts.lines && <path d={path([[0, 0], [xm, xm * s1]], sx, sy)} stroke={C.river} strokeDasharray="5 4" fill="none" />}
+    {opts.lines && <path d={path([[p1.cb, p1.cx], [xm, p1.cx + (xm - p1.cb) * s2]], sx, sy)} stroke={C.brown} strokeDasharray="5 4" fill="none" />}
+    {opts.corr && <path d={path(cpts.map(p => [p.cb, p.ccx]), sx, sy)} stroke={C.green} strokeWidth="2.5" fill="none" />}
+    {pts.slice(0, np).map((p, i) => <circle key={p.year} cx={sx(p.cb)} cy={sy(p.cx)} r="3.6" fill={opts.lines || opts.corr ? (i < kk ? C.river : C.brown) : C.navy} opacity={opts.corr ? 0.45 : 1}><title>{p.year}: ΣX {r0(p.cx)}, ΣB {r0(p.cb)}</title></circle>)}
+    {!opts.lines && !opts.corr && np > 0 && <text x={sx(pts[np - 1].cb) + 8} y={sy(pts[np - 1].cx) - 6} fontSize="11" fill={C.navy}>{pts[np - 1].year}</text>}
+    {opts.lines && <><circle cx={sx(p1.cb)} cy={sy(p1.cx)} r="7" fill="none" stroke={C.gold} strokeWidth="2" /><text x={sx(p1.cb) - 10} y={sy(p1.cx) - 10} fontSize="11" textAnchor="end" fill={C.navy}>break: {p1.year} | {pts[kk].year}</text></>}
+  </>}</Plot>;
+  const body = [
+    <div key="0">
+      <p>Each row is one year: the rainfall at the station under test, <b>X</b>, and the <b>mean of the base stations</b> around it. Look for anything odd — you usually cannot see an inconsistency in the raw numbers, which is why we accumulate.</p>
+      {tbl(0, false)}
+    </div>,
+    <div key="1">
+      <p>Add each year to the running totals. ΣX for year <i>i</i> = ΣX for year <i>i</i>−1 + X<sub>i</sub>; the same for the base mean.{ds === "slide" ? " (T1 accumulates from the latest year backwards; this table runs in the order the data are listed — either works if you are consistent.)" : ""}</p>
+      <div className="btn-row"><button className="btn" onClick={() => setNAcc(Math.min(n, nAcc + 1))}>Add next year</button><button className="btn ghost" onClick={() => setNAcc(n)}>Fill all</button><button className="btn ghost" onClick={() => setNAcc(1)}>Reset</button></div>
+      {nAcc <= n && nAcc > 1 && <p className="note">{pts[nAcc - 1].year}: ΣX = {r0(pts[nAcc - 2].cx)} + {pts[nAcc - 1].X} = <b>{r0(pts[nAcc - 1].cx)}</b>; ΣBase = {r0(pts[nAcc - 2].cb)} + {f1(pts[nAcc - 1].B)} = <b>{r0(pts[nAcc - 1].cb)}</b></p>}
+      {tbl(nAcc, true)}
+    </div>,
+    <div key="2">
+      <p>Plot ΣX (y) against ΣBase (x), one year at a time. A consistent record keeps to a <b>straight line</b> through the origin.</p>
+      <label className="f">Years plotted: <b>{nPlot} of {n}</b><input type="range" min="1" max={n} value={nPlot} onChange={e => setNPlot(+e.target.value)} /></label>
+      <div className="btn-row"><button className="btn ghost" onClick={() => setNPlot(n)}>Plot all</button></div>
+      {plot(nPlot)}
+    </div>,
+    <div key="3">
+      <p>Slide the break to the year where the points change direction, then check your choice. In practice, confirm it with the station's history (a shifted gauge, new building, new instrument).</p>
+      <label className="f">Break between <b>{p1.year}</b> and <b>{pts[kk].year}</b><input type="range" min="3" max={n - 3} value={kk} onChange={e => { setK(+e.target.value); setChecked(false); }} /></label>
+      <div className="btn-row"><button className="btn" onClick={() => setChecked(true)}>Check my break</button></div>
+      {checked && (Math.abs(kk - best) <= 1
+        ? <p className="note" style={{ color: C.green }}>✓ Good — the two straight lines fit best with the break between {pts[best - 1].year} and {pts[best].year}.</p>
+        : <p className="note" style={{ color: C.warn }}>Not yet — look for where the points bend {kk < best ? "later" : "earlier"}. The two lines should hug the points on both sides.</p>)}
+      {plot(n, { lines: true })}
+    </div>,
+    <div key="4">
+      <p>Slope of each straight segment:</p>
+      <div className="calc">
+        <p><b>M<sub>a</sub></b> ({pts[0].year}–{p1.year}) = ΣX / ΣBase at {p1.year} = {r0(p1.cx)} / {r0(p1.cb)} = <b>{f3(s1)}</b></p>
+        <p><b>M<sub>c</sub></b> ({pts[kk].year}–{pe.year}) = ({r0(pe.cx)} − {r0(p1.cx)}) / ({r0(pe.cb)} − {r0(p1.cb)}) = {r0(pe.cx - p1.cx)} / {r0(pe.cb - p1.cb)} = <b>{f3(s2)}</b></p>
+      </div>
+      <div className="kpis"><Kpi v={f3(s1)} l={`Slope ${pts[0].year}–${p1.year}`} /><Kpi v={f3(s2)} l={`Slope ${pts[kk].year}–${pe.year}`} /><Kpi v={f1(Math.abs(s2 / s1 - 1) * 100) + " %"} l="Change in slope" tone={Math.abs(s2 / s1 - 1) > 0.05 ? "bad" : "good"} /></div>
+      <p className="note">A change of only a few per cent may be chance; correct only a clear, persistent break with a physical cause.</p>
+    </div>,
+    <div key="5">
+      <div className="wg-row" style={{ alignItems: "center" }}><span className="note" style={{ margin: 0 }}>Treat as correct:</span>
+        <Seg value={fix} onChange={setFix} options={[["second", `first period (${pts[0].year}–${p1.year})`], ["first", `second period (${pts[kk].year}–${pe.year})`]]} /></div>
+      <p>Correction factor = {fix === "second" ? <>M<sub>a</sub> / M<sub>c</sub> = {f3(s1)} / {f3(s2)}</> : <>M<sub>c</sub> / M<sub>a</sub> = {f3(s2)} / {f3(s1)}</>} = <b>{f3(factor)}</b>, applied to every year of the {fix === "second" ? "second" : "first"} period: P<sub>cx</sub> = P<sub>x</sub> × {f3(factor)}.</p>
+      {plot(n, { corr: true })}
+      <p className="note">Green line: the corrected record — now one straight line. Faded dots: the original.</p>
+      <div style={{ maxHeight: 260, overflow: "auto" }}><table><thead><tr><th>Year</th><th>X recorded</th><th>X corrected</th></tr></thead><tbody>
+        {pts.map((p, i) => <tr key={p.year}><td>{p.year}</td><td>{p.X}</td><td style={{ color: isCorr(i) ? C.warn : null }}>{isCorr(i) ? Math.round(p.X * factor) : p.X}</td></tr>)}
+      </tbody></table></div>
+    </div>,
+  ];
+  return <Box title="Double mass curve — step by step">
+    {dsSeg}{ownBox}
+    <div className="stepper">{steps.map((t, i) => <button key={t} className={(i === step ? "on " : "") + (i < step ? "done" : "")} onClick={() => setStep(i)}><span>{i + 1}</span>{t}</button>)}</div>
+    {body[step]}
+    <div className="btn-row" style={{ justifyContent: "space-between", marginTop: 12 }}>
+      <button className="btn ghost" disabled={step === 0} onClick={() => setStep(step - 1)}>← Back</button>
+      {step < 5 && <button className="btn" onClick={() => { if (step === 1) setNAcc(n); setStep(step + 1); }}>Next: {steps[step + 1]} →</button>}
     </div>
-    <Plot w={660} h={320} x={[0, xm]} y={[0, ym]} xLabel="Cumulative mean rainfall of base stations (mm)" yLabel="Cumulative rainfall at X (mm)">{(sx, sy) => <>
-      <path d={path([[0, 0], [xm, xm * s1]], sx, sy)} stroke={C.river} strokeDasharray="5 4" fill="none" />
-      <path d={path([[p1.cb, p1.cx], [xm, p1.cx + (xm - p1.cb) * s2]], sx, sy)} stroke={C.brown} strokeDasharray="5 4" fill="none" />
-      {pts.map((p, i) => <circle key={p.year} cx={sx(p.cb)} cy={sy(p.cx)} r="3.4" fill={i < kk ? C.river : C.brown}><title>{p.year}: ΣX {p.cx}, ΣB {Math.round(p.cb)}</title></circle>)}
-      <circle cx={sx(p1.cb)} cy={sy(p1.cx)} r="7" fill="none" stroke={C.gold} strokeWidth="2" />
-      <text x={sx(p1.cb) + 10} y={sy(p1.cx) - 8} fontSize="11" fill={C.navy}>break after {p1.year}</text>
-    </>}</Plot>
-    <label className="f">Move the break: <b>{p1.year} | {breakYear}</b><input type="range" min="3" max={pts.length - 3} value={kk} onChange={e => setK(+e.target.value)} /></label>
-    <div className="wg-row" style={{ alignItems: "center" }}><span className="note" style={{ margin: 0 }}>Treat as correct:</span>
-      <Seg value={fix} onChange={setFix} options={[["second", `first segment (${pts[0].year}–${p1.year})`], ["first", `second segment (${breakYear}–${pe.year})`]]} /></div>
-    <div className="kpis"><Kpi v={f3(s1)} l={`Slope ${pts[0].year}–${p1.year}`} /><Kpi v={f3(s2)} l={`Slope ${breakYear}–${pe.year}`} /><Kpi v={f3(factor)} l="Correction factor" tone="good" /></div>
-    <p className="note">Corrected value = recorded × {fix === "second" ? "Ma/Mc = slope(first)/slope(second)" : "slope(second)/slope(first)"}, applied to the {fix === "second" ? "second" : "first"} segment. Slide the break until both segments look straight — that is the year the station changed.</p>
-    <details className="sol"><summary>Corrected record (table)</summary><div style={{ maxHeight: 260, overflow: "auto" }}><table><thead><tr><th>Year</th><th>X recorded</th><th>X corrected</th></tr></thead><tbody>
-      {pts.map((p, i) => { const corr = (fix === "second" ? i >= kk : i < kk) ? p.X * factor : p.X; return <tr key={p.year}><td>{p.year}</td><td>{p.X}</td><td style={{ color: corr !== p.X ? C.warn : null }}>{Math.round(corr)}</td></tr>; })}
-    </tbody></table></div></details>
   </Box>;
 }
 
@@ -996,7 +1062,62 @@ function Dalton() {
   </Box>;
 }
 
+/* ============ S01: India's rivers and basin water resources ============ */
+// Average annual water resources potential by basin (BCM = km³). CWC, "Reassessment of Water Availability
+// in India using Space Inputs" (2019), as given in PIB release 1705797 (2021). Total 1,999.20 BCM.
+const BASIN19 = [
+  ["Brahmaputra", 527.28, "#2a6f97"], ["Ganga", 509.52, "#c8973a"], ["WFR Tadri–Kanyakumari", 119.06, null], ["WFR Tapi–Tadri", 118.35, null],
+  ["Godavari", 117.74, "#2d6a4f"], ["Krishna", 89.04, "#8a4b12"], ["Barak & others", 86.67, "#5a3e8c"], ["Mahanadi", 73.00, "#b5179e"],
+  ["Narmada", 58.21, "#d1495b"], ["Indus", 45.53, "#00798c"], ["Brahmani-Baitarani", 35.65, "#6a994e"], ["Minor rivers to Myanmar & Bangladesh", 31.17, null],
+  ["Cauvery", 27.67, "#e07a5f"], ["WFR Kutch & Saurashtra incl. Luni", 26.93, null], ["EFR Pennar–Kanyakumari", 26.74, "#3d405b"],
+  ["EFR Mahanadi–Pennar", 26.41, null], ["Tapi", 26.24, "#9c6644"], ["Subarnarekha", 15.05, "#577590"], ["Mahi", 14.96, "#f3722c"],
+  ["Sabarmati", 12.96, null], ["Pennar", 11.02, "#90be6d"],
+];
+const B_TOTAL = 1999.2;
+function IndiaMap() {
+  const [m, setM] = useState(null);
+  const [sel, setSel] = useState(null);
+  const [hov, setHov] = useState(null);
+  const [labels, setLabels] = useState(true);
+  useEffect(() => { fetch("data/india_map.json").then(r => r.json()).then(setM).catch(() => setM(false)); }, []);
+  const col = Object.fromEntries(BASIN19.filter(b => b[2]).map(b => [b[0], b[2]]));
+  const selB = BASIN19.find(b => b[0] === sel);
+  const named = useMemo(() => { if (!m) return []; const seen = {}; return m.rivers.filter(r => r.r <= 7 && !seen[r.n] && (seen[r.n] = 1)); }, [m]);
+  if (m === false) return <Box title="India's rivers and water resources">Map data could not load.</Box>;
+  if (!m) return <Box title="India's rivers and water resources">Loading map…</Box>;
+  const mid = d => { const a = d.split(/[ML]/).filter(Boolean); const p = a[Math.floor(a.length * 0.62)].split(" ").map(Number); return p; };
+  return <Box title="India's rivers and water resources" kind="Interactive map">
+    <div className="wg-row">
+      <div className="wg-col" style={{ flex: "1 1 360px", position: "relative" }}>
+        <svg viewBox={`-10 -10 ${m.w + 20} ${m.h + 20}`} style={{ background: "#eef5f8", borderRadius: 8, border: "1px solid #dfe8ec" }}>
+          {m.outline.map((d, i) => <path key={i} d={d} fill="#fbf8f1" stroke="#8d8273" strokeWidth="0.9" strokeLinejoin="round" />)}
+          {m.rivers.map((r, i) => { const on = !sel || r.b === sel; return <path key={i} d={r.d} fill="none" stroke={on ? (col[r.b] || "#4a8fb3") : "#c9d6dc"} strokeWidth={(sel && r.b === sel ? 2.6 : 1.4) + (9 - r.r) * 0.18} strokeLinecap="round" strokeLinejoin="round"
+            onMouseEnter={() => setHov(r)} onMouseLeave={() => setHov(null)} onClick={() => setSel(sel === r.b ? null : r.b)} style={{ cursor: "pointer" }}><title>{r.n} — {r.b} basin</title></path>; })}
+          {labels && named.filter(r => !sel || r.b === sel).map(r => { const [x, y] = mid(r.d); const end = x > m.w - 90; return <text key={r.n} x={end ? x - 3 : x + 3} y={y - 3} textAnchor={end ? "end" : "start"} fontSize="9.5" fill="#1a3260" stroke="#fbf8f1" strokeWidth="2.5" paintOrder="stroke" pointerEvents="none">{r.n}</text>; })}
+          {m.cities.map(([n, x, y]) => <g key={n} pointerEvents="none"><circle cx={x} cy={y} r="3" fill="#0f1f3d" /><text x={x + 5} y={y + 3.5} fontSize="9.5" fontWeight="700" fill="#0f1f3d" stroke="#fbf8f1" strokeWidth="2.5" paintOrder="stroke">{n}</text></g>)}
+        </svg>
+        {hov && <div className="note" style={{ position: "absolute", left: 10, top: 8, background: "#fff", padding: "4px 8px", borderRadius: 6, boxShadow: "0 1px 4px rgba(0,0,0,.15)" }}><b>{hov.n}</b> · {hov.b} basin</div>}
+        <label className="note" style={{ display: "flex", gap: 6, alignItems: "center" }}><input type="checkbox" checked={labels} onChange={e => setLabels(e.target.checked)} /> River names</label>
+        <p className="note" style={{ fontSize: 11 }}>{m.credit} Rivers shown are the major ones only; basin boundaries are not drawn — see India-WRIS for those.</p>
+      </div>
+      <div className="wg-col" style={{ flex: "1 1 300px" }}>
+        {selB ? <div className="kpis"><Kpi v={selB[1].toFixed(1) + " km³"} l={selB[0] + " — average annual potential"} /><Kpi v={(selB[1] / B_TOTAL * 100).toFixed(1) + " %"} l="Share of India's total" tone="good" /></div>
+          : <div className="kpis"><Kpi v="1,999 km³" l="India's average annual water resources potential" /><Kpi v="21" l="basins and basin groups (CWC)" /></div>}
+        <p className="note" style={{ marginTop: 4 }}>Click a basin (or a river) to highlight it. Basins in grey have no major river on this map.</p>
+        <div style={{ maxHeight: 430, overflow: "auto" }}>
+          {BASIN19.map(([n, v, c]) => <div key={n} onClick={() => setSel(sel === n ? null : n)} style={{ cursor: "pointer", padding: "3px 4px", borderRadius: 4, background: sel === n ? "#fff6df" : null }}>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5 }}><span><span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, background: c || "#c9c2b5", marginRight: 6 }} />{n}</span><b>{v.toFixed(1)}</b></div>
+            <div style={{ height: 6, background: "#f0ebe2", borderRadius: 3 }}><div style={{ width: (v / 527.28 * 100) + "%", height: 6, borderRadius: 3, background: c || "#c9c2b5" }} /></div>
+          </div>)}
+        </div>
+        <p className="note" style={{ fontSize: 11 }}>km³ = billion m³ (BCM). Source: CWC (2019), <i>Reassessment of Water Availability in India using Space Inputs</i>. WFR/EFR = west/east-flowing rivers.</p>
+      </div>
+    </div>
+  </Box>;
+}
+
 export const WIDGETS = {
+  indiamap: IndiaMap,
   abstractions: Abstractions,
   dalton: Dalton,
   ...ILLOS,

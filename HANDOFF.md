@@ -148,3 +148,10 @@ Still open:
 - **S10** now has full notes (abstractions, interception, depression storage, evaporation, Dalton) with two new widgets: `abstractions`, `dalton`.
 - The numbers log above does not match the sessions in several places — trust the session files, not the log.
 - Units 2–3 stay `"enabled": false` until the instructor reviews them (use `?preview=1`).
+
+## Additions (30 Oct 2026, later)
+- **Field photos** (S03, S11, S28): hot-linked from Wikimedia Commons via `Special:FilePath`, each captioned with a link to its Commons file page (author and licence are there). Use `:::photos` and `![Caption — Wikimedia Commons](url "file-page-url")`. If a photo fails to load, the page shows a link instead.
+- **Double mass curve** widget is now a six-step stepper (data → accumulate → plot → break → slopes → correct) with a "Paste your data" option.
+- **Lab L17** (real IMD rainfall) + `data/imd/imd_rain_point.py` (imdlib download of the 0.25° grid for a point and five neighbours).
+- **India map** widget `indiamap` (S01): `data/india_map.json` built by `tools/build_india_map.py` from DataMeet India boundary (CC BY 4.0) and Natural Earth rivers (public domain). Basin figures: CWC 2019 reassessment (1,999.20 BCM).
+- **Hydrologic cycle** scene redrawn (layered terrain, drifting clouds, rain shaft, vapour, waves, groundwater seepage).

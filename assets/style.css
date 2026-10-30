@@ -2254,3 +2254,38 @@ kbd {
     background: #ffffff !important;
   }
 }
+
+/* Field photos (external, credited) */
+.gallery.photos { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+.gallery.photos figure img { height: 210px; object-fit: cover; background: var(--g100, #f3efe8); border-radius: 6px; }
+.prose figcaption a.src { font-family: var(--mono); font-size: 10.5px; color: var(--g400); text-decoration: underline dotted; margin-left: 4px; }
+.img-missing { height: 210px; display: flex; align-items: center; justify-content: center; text-align: center; padding: 12px; font-size: 13px; color: var(--g400); background: var(--g100, #f3efe8); border: 1px dashed var(--g300, #d8cfc2); border-radius: 6px; }
+
+/* Widget stepper */
+.wg .stepper { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 14px; }
+.wg .stepper button { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--g300, #d8cfc2); background: transparent; color: inherit; border-radius: 999px; padding: 5px 12px 5px 6px; font: inherit; font-size: 13px; cursor: pointer; }
+.wg .stepper button span { display: inline-flex; width: 22px; height: 22px; border-radius: 50%; align-items: center; justify-content: center; background: var(--g100, #f3efe8); font-size: 12px; font-weight: 700; }
+.wg .stepper button.on { border-color: #c8973a; background: #fff6df; color: #0f1f3d; }
+.wg .stepper button.on span { background: #c8973a; color: #fff; }
+.wg .stepper button.done span { background: #2d6a4f; color: #fff; }
+.wg .calc p { margin: 4px 0; font-family: var(--mono); font-size: 13.5px; }
+
+/* Hydrologic cycle scene (S01) */
+@keyframes hc-drift { from { transform: translateX(-18px); } to { transform: translateX(18px); } }
+@keyframes hc-wave { from { transform: translateX(0); } to { transform: translateX(-60px); } }
+@keyframes hc-glint { 0%, 100% { opacity: 0; } 50% { opacity: .7; } }
+@keyframes hc-wisp { from { transform: translateY(6px); opacity: 0; } 30% { opacity: .85; } to { transform: translateY(-46px); opacity: 0; } }
+@keyframes hc-rain { from { transform: translateY(0); opacity: 0; } 12% { opacity: 1; } to { transform: translateY(120px); opacity: 0; } }
+@keyframes hc-sink { from { transform: translateY(0); opacity: 0; } 20% { opacity: 1; } to { transform: translateY(34px); opacity: 0; } }
+@keyframes hc-seep { from { transform: translateX(0); opacity: 0; } 15% { opacity: .9; } to { transform: translateX(-260px); opacity: 0; } }
+.hc .hc-drift { animation: hc-drift 14s ease-in-out infinite alternate; }
+.hc .hc-drift2 { animation: hc-drift 19s ease-in-out infinite alternate-reverse; }
+.hc .hc-drift3 { animation: hc-drift 23s ease-in-out infinite alternate; }
+.hc .hc-wave { animation: hc-wave 4s linear infinite; }
+.hc .hc-glint { animation: hc-glint 3s ease-in-out infinite; }
+.hc .hc-wisp { animation: hc-wisp 3.6s ease-out infinite; }
+.hc .hc-rain { animation: hc-rain 1.1s linear infinite; }
+.hc .hc-sink { animation: hc-sink 2.4s ease-in infinite; }
+.hc .hc-seep { animation: hc-seep 9s linear infinite; }
+svg.paused *, svg.paused { animation-play-state: paused !important; }
+@media (prefers-reduced-motion: reduce) { .hc * { animation: none !important; } }

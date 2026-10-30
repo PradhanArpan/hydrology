@@ -170,6 +170,11 @@
       "Google Classroom",
       "https://classroom.google.com",
       "#4cc9f0"
+    ],
+    [
+      "IMD gridded rainfall (imdlib)",
+      "https://imdlib.readthedocs.io/en/latest/Usage.html",
+      "#4ea8de"
     ]
   ],
   "labs": [
@@ -439,6 +444,24 @@
       "file": "labs/L16.md",
       "enabled": false,
       "release": ""
+    },
+    {
+      "id": "L17",
+      "unit": 1,
+      "title": "Real IMD rainfall: download, check and correct",
+      "goal": "Download IMD gridded rainfall for a real location, fill a missing year and test the record with a double mass curve.",
+      "software": [
+        "Python (Colab)",
+        "Spreadsheet"
+      ],
+      "sessions": [
+        "S04",
+        "S06"
+      ],
+      "minutes": 60,
+      "file": "labs/L17.md",
+      "enabled": true,
+      "release": ""
     }
   ],
   "sessions": [
@@ -527,7 +550,8 @@
       "enabled": true,
       "ready": true,
       "labs": [
-        "L03"
+        "L03",
+        "L17"
       ],
       "release": ""
     },
@@ -572,7 +596,8 @@
       "enabled": true,
       "ready": true,
       "labs": [
-        "L06"
+        "L06",
+        "L17"
       ],
       "release": ""
     },
