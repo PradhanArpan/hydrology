@@ -1778,6 +1778,7 @@ kbd {
   gap: 14px;
   padding-top: 6px;
 }
+.rail > * { flex-shrink: 0; }
 .rail-box {
   background: var(--card-bg);
   border: 1px solid var(--g200);

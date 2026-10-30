@@ -134,3 +134,17 @@ Every numerical result in worked examples, quizzes, and check-answer blocks has 
 1. Supply real HEC-HMS 4.14 screenshots for `labs/L01.md` (steps 9–11) to replace the text-only placeholders.
 2. Review the authored notes for Unit 2 (S10–S18) and Unit 3 (S19–S27) using `?preview=1` before setting `"enabled": true` in `sessions.json`.
 3. When teaching Units 4 & 5, expand their detailed outlines into full lecture notes following the established template.
+
+## Verification pass (Claude, 30 Oct 2026)
+
+Fixed after Antigravity's commits:
+- **Windows line endings (CRLF)** broke every `:::` block (solutions, tasks, galleries) in S01–S27 and L11–L16. Files converted to LF; `.gitattributes` added; the renderer now normalises line endings too.
+- **Unit 3 (S19–S27):** LaTeX had been mangled by Python string escapes (`\frac`, `\text`, `\times`, `\alpha`, `\beta`, `\right`, `\neq` …) — restored. Check/quiz blocks were plain text, not JSON, so they did not render — converted (quiz answers shuffled so the correct one is not always first).
+- **Blaney-Criddle (S14 + widget):** used °C; the T1 form needs °F. Example, check answer and exam answers recomputed (October cotton: 142.9 mm/month).
+- **S24 Snyder:** 800^0.3 = 7.429 → t_p = 10.40 h.
+- Math in callout/solution titles now renders; L16 `$area` wrapped as code; sidebar rail boxes no longer squashed.
+
+Still open:
+- **S10** is still the draft-outline stub.
+- The numbers log above does not match the sessions in several places — trust the session files, not the log.
+- Units 2–3 stay `"enabled": false` until the instructor reviews them (use `?preview=1`).

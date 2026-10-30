@@ -43,6 +43,7 @@ function checkHtml(json) {
 }
 
 export function renderMd(src) {
+  src = String(src).replace(/\r\n?/g, "\n");
   const store = {};
   const put = html => { const k = key(); store[k] = html; return "\n\n" + k + "\n\n"; };
   src = src.replace(/```quiz\s*\n([\s\S]*?)\n```/g, (m, j) => put(quizHtml(j)));
@@ -51,9 +52,9 @@ export function renderMd(src) {
   src = src.replace(/^::widget\[([\w-]+)\]\s*$/gm, (m, w) => put('<div class="wg-mount" data-w="' + w + '"></div>'));
   src = src.replace(/^:::(\w+)[ \t]*(.*)\n([\s\S]*?)\n:::[ \t]*$/gm, (m, type, title, body) => {
     const inner = renderMd(body);
-    if (type === "sol") return put('<details class="sol"><summary>' + esc(title || "Show solution") + "</summary>" + inner + "</details>");
+    if (type === "sol") return put('<details class="sol"><summary>' + inline(title || "Show solution") + "</summary>" + inner + "</details>");
     if (type === "gallery") return put('<div class="gallery">' + inner.replace(/<\/?p>/g, "") + "</div>");
-    return put('<div class="callout ' + type + '"><span class="ct">' + esc(title || type) + "</span>" + inner + "</div>");
+    return put('<div class="callout ' + type + '"><span class="ct">' + inline(title || type) + "</span>" + inner + "</div>");
   });
   src = src.replace(/\$\$([\s\S]+?)\$\$/g, (m, t) => put(math(t, true)).trim());
   src = src.replace(/(^|[^\\$])\$([^\s$](?:[^$\n]*?))\$(?!\d)/g, (m, pre, t) => { const k = key(); store[k] = math(t.trim(), false); return pre + k; });

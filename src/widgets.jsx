@@ -860,7 +860,8 @@ function PenCalc() {
   const Ea = 0.35 * (1 + u2 / 160) * (ew - ea);
   const petPenman = (slopeA * hn + Ea * gamma) / (slopeA + gamma);
 
-  const petBCMonthly = 2.54 * kCrop * (pPct * temp / 100) * 10;
+  const tF = 1.8 * temp + 32; // Blaney-Criddle (T1 form) needs temperature in °F
+  const petBCMonthly = 2.54 * kCrop * (pPct * tF / 100) * 10;
   const petBCDaily = petBCMonthly / 30;
 
   return (
@@ -916,7 +917,7 @@ function PenCalc() {
               <Kpi v={petBCMonthly.toFixed(1) + " mm/mo"} l="Monthly crop ET" />
             </div>
             <p className="note">
-              The empirical Blaney-Criddle formula estimates monthly consumptive use: PET = 2.54 · k · (p · t / 100) cm/month, widely used for irrigation water scheduling where radiation and humidity data are unavailable.
+              The empirical Blaney-Criddle formula estimates monthly consumptive use: E_T = 2.54 · K · p · T_f / 100 cm/month, with T_f in °F (here {tF.toFixed(1)} °F), widely used for irrigation water scheduling where radiation and humidity data are unavailable.
             </p>
           </div>
         </div>

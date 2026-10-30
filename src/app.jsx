@@ -228,7 +228,7 @@ function useText(path) {
     setT(null);
     fetch(path, { cache: "no-cache" })
       .then(r => (r.ok ? r.text() : Promise.reject(r.status)))
-      .then(setT)
+      .then(t => setT(t.replace(/\r\n?/g, "\n")))  // tolerate Windows (CRLF) line endings
       .catch(e => setT("> [!warn] Could not load\n> " + path + " (" + e + ")"));
   }, [path]);
   return t;
