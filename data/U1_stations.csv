@@ -1,0 +1,5 @@
+station,type,lon,lat,storm_total_mm
+TG1,recording (syphon),77.45686,12.93256,105
+TG2,non-recording (standard),77.43475,12.91266,86
+TG3,non-recording (standard),77.48359,12.95336,124
+TG4,non-recording (standard),77.50847,12.90724,71

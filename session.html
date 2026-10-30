@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CE633 Session</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/vendor/katex/katex.min.css">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 3C11 11 7 15.5 7 20a9 9 0 0 0 18 0c0-4.5-4-9-9-17z' fill='%230f5c7a'/%3E%3C/svg%3E">
+</head>
+<body>
+<header class="topbar"><div class="wrap">
+  <a class="brand" href="index.html"><span class="code" id="b-code">CE633</span><span>Hydrology &amp; WRE</span></a>
+  <nav>
+    <a href="index.html">Sessions</a>
+    <a href="session.html?page=setup" id="n-setup">Software setup</a>
+    <a href="session.html?page=pbl" id="n-pbl" class="hide-sm">Project (PBL)</a>
+    <a href="session.html?page=assessment" id="n-assessment" class="hide-sm">Assessment</a>
+    <button class="theme-btn" onclick="CE633.toggleTheme()" aria-label="Toggle dark mode">Theme</button>
+  </nav>
+</div></header>
+
+<main class="wrap">
+  <div class="sess-head" id="head"></div>
+  <div class="tabs" id="tabs" role="tablist"></div>
+  <div class="layout">
+    <article class="prose" id="body"><p style="color:var(--muted)">Loading…</p></article>
+    <aside class="toc" id="toc"></aside>
+  </div>
+  <div class="pager" id="pager"></div>
+</main>
+
+<script src="assets/vendor/marked.min.js"></script>
+<script src="assets/vendor/katex/katex.min.js"></script>
+<script src="assets/app.js"></script>
+<script>
+(async function () {
+  const { esc, chip, isPreview } = CE633;
+  const q = new URLSearchParams(location.search);
+  const id = q.get("id"), page = q.get("page");
+  const head = document.getElementById("head"), body = document.getElementById("body");
+  const tabsEl = document.getElementById("tabs"), toc = document.getElementById("toc"), pager = document.getElementById("pager");
+  const ICON = { "Theory": "📖", "In class": "✏️", "Software lab": "💻", "Practice": "✅", "Exam questions": "📝" };
+
+  let data;
+  try { data = await CE633.loadCourse(); } catch (e) { body.innerHTML = '<div class="locked-box">' + esc(e.message) + "</div>"; return; }
+  const preview = isPreview();
+  let file, sess = null;
+
+  if (page) {
+    const pg = (data.pages || []).find(p => p.id === page);
+    if (!pg) { body.innerHTML = '<div class="locked-box">Page not found.</div>'; return; }
+    file = pg.file;
+    const nav = document.getElementById("n-" + page); if (nav) nav.classList.add("on");
+    head.innerHTML = '<div class="crumbs"><a href="index.html">' + esc(data.course.code) + "</a> / " + esc(pg.title) + "</div><h1>" + esc(pg.title) + "</h1>" + (pg.hook ? '<p class="hook">' + esc(pg.hook) + "</p>" : "");
+    document.title = pg.title + " · " + data.course.code;
+  } else {
+    sess = data.sessions.find(s => s.id === id);
+    if (!sess) { body.innerHTML = '<div class="locked-box">Session not found. <a href="index.html">Back to all sessions</a></div>'; return; }
+    const unit = data.units.find(u => u.n === sess.unit);
+    document.title = sess.id + " " + sess.title + " · " + data.course.code;
+    head.innerHTML = '<div class="crumbs"><a href="index.html">' + esc(data.course.code) + "</a> / Unit " + unit.roman + " · " + esc(unit.title) + " / " + sess.id + "</div>" +
+      "<h1>" + esc(sess.title) + "</h1><p class=\"hook\">" + esc(sess.hook) + "</p>" +
+      '<div class="sess-meta">' + chip("Day " + sess.day, "co") + chip(sess.co, "co") + (sess.refs ? chip("Ref: " + sess.refs, "co") : "") +
+      (sess.software || []).map(x => chip(x)).join("") + (sess.enabled ? "" : chip("Locked — instructor preview", "other")) + "</div>";
+    if (!sess.enabled && !preview) {
+      body.innerHTML = '<div class="locked-box"><p style="font-size:28px;margin:0">🔒</p><p>This session has not been released yet' + (sess.release ? " (planned: " + esc(sess.release) + ")" : "") + ".</p><p><a href=\"index.html\">Back to all sessions</a></p></div>";
+      return;
+    }
+    file = sess.file;
+    // pager over visible sessions
+    const vis = data.sessions.filter(s => s.enabled || preview);
+    const i = vis.findIndex(s => s.id === sess.id);
+    const prev = vis[i - 1], next = vis[i + 1];
+    pager.innerHTML = (prev ? '<a href="session.html?id=' + prev.id + '"><small>← Previous</small>' + esc(prev.id + " · " + prev.title) + "</a>" : "<span></span>") +
+                      (next ? '<a href="session.html?id=' + next.id + '" style="text-align:right"><small>Next →</small>' + esc(next.id + " · " + next.title) + "</a>" : "<span></span>");
+  }
+
+  let src;
+  try { src = await CE633.loadText(file); } catch (e) { body.innerHTML = '<div class="locked-box">' + esc(e.message) + "</div>"; return; }
+
+  // split into tabs on <!--tab:Name--> markers
+  const parts = [];
+  const re = /<!--\s*tab:\s*(.+?)\s*-->/g;
+  let m, last = null, lastIdx = 0;
+  while ((m = re.exec(src))) {
+    if (last !== null) parts.push({ name: last, md: src.slice(lastIdx, m.index) });
+    else if (src.slice(0, m.index).trim()) parts.push({ name: "Overview", md: src.slice(0, m.index) });
+    last = m[1]; lastIdx = re.lastIndex;
+  }
+  if (last !== null) parts.push({ name: last, md: src.slice(lastIdx) });
+  if (!parts.length) parts.push({ name: "", md: src });
+
+  const panels = parts.map(p => {
+    const d = document.createElement("div");
+    d.className = "tabpanel";
+    d.innerHTML = CE633.renderMd(p.md);
+    CE633.enhance(d);
+    return d;
+  });
+  body.innerHTML = "";
+  panels.forEach(p => body.appendChild(p));
+
+  function show(i) {
+    panels.forEach((p, j) => p.style.display = j === i ? "" : "none");
+    tabsEl.querySelectorAll("button").forEach((b, j) => b.classList.toggle("on", j === i));
+    CE633.buildToc(panels[i], toc);
+    try { history.replaceState(null, "", location.pathname + location.search + "#tab=" + i); } catch (e) {}
+  }
+  if (parts.length > 1) {
+    tabsEl.innerHTML = parts.map((p, i) => '<button role="tab"><span class="ic">' + (ICON[p.name] || "•") + "</span>" + esc(p.name) + "</button>").join("");
+    tabsEl.querySelectorAll("button").forEach((b, i) => b.addEventListener("click", () => { show(i); window.scrollTo({ top: 0 }); }));
+  } else tabsEl.style.display = "none";
+  const t = (location.hash.match(/tab=(\d+)/) || [])[1];
+  show(t && panels[+t] ? +t : 0);
+})();
+</script>
+</body>
+</html>
