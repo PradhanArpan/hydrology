@@ -2,34 +2,31 @@
 
 A static course portal (GitHub Pages) for CE633, Department of Civil Engineering, CHRIST (Deemed to be University), Kengeri Campus. Instructor: Dr Shibu K. Mani.
 
-Each of the 45 sessions has four tabs:
+The hub (`index.html`) is a small React app styled after the CE541E08 hub: a navy sidebar with units, the lab track and course pages; unit tables with release status; and session pages.
 
-| Tab | Purpose |
-| --- | --- |
-| **Theory** | Examinable notes: definitions, derivations, formulas, solved numericals. Students read it before class. |
-| **In class** | A short concept exercise by hand or in a spreadsheet. |
-| **Software lab** | Step-by-step HEC-HMS / HEC-RAS / QGIS lab that rebuilds the concept in software. |
-| **Practice** | Self-check quiz and 2/5/10-mark exam-style questions. |
+**Theory sessions** (`sessions/S01.md` … `S45.md`) have three tabs — *Theory* (notes, slide figures, solved numericals and interactive tools), *In class* (a short concept exercise) and *Practice* (self-check quiz, exam-style questions).
 
-HEC-HMS is used from Session 2; one model of one catchment grows across the semester. HEC-RAS joins in Unit IV.
+**Software lab track** (`labs/L01.md` …) runs in parallel: each lab is a stepper — one step at a time, with "You should see" and "If it does not work" boxes, progress saved in the browser. L01–L10 cover Unit I (HEC-HMS and QGIS).
 
 ## Layout
 
 ```
-index.html          hub: lists sessions from sessions.json, with release status
-session.html        viewer: renders sessions/Sxx.md or pages/*.md (Markdown + KaTeX)
-sessions.json       course info, units, pages, and the 45-session plan (enabled flags)
-sessions/S01.md …   one Markdown file per session, tabs split by <!--tab:Name-->
+index.html          the hub (loads assets/app.js)
+sessions.json       course info, units, pages, quick links, theory sessions and labs (enabled flags)
+sessions/Sxx.md     theory sessions; tabs split by <!--tab:Name-->
+labs/Lxx.md         software labs; steps split by <!--step: Title--> … <!--end-->
 pages/              setup, PBL and assessment pages
-data/               datasets used in labs (U1_* are synthetic teaching data)
-assets/             style.css, app.js, figures (img/), vendored marked + KaTeX
-tools/              Python scripts that generate the datasets, figures and sessions.json
-INSTRUCTOR.md       how to release sessions and edit content
+data/               lab datasets (U1_* are synthetic teaching data)
+assets/img/ppt/     figures and photos taken from the CE533 Unit I slides
+assets/img/labs/    lab schematics
+assets/app.js       built bundle (React) — rebuilt from src/ with tools/build.sh
+src/                React source: app.jsx (shell and views), widgets.jsx (interactive tools), charts.jsx, md.js
+tools/              data, figure and sessions.json generators; build.sh
 ```
 
-No build step: edit Markdown or JSON, commit, and the site updates.
+Content edits (Markdown, JSON) need no build step. Only changes to `src/` need `tools/build.sh` (Node.js).
 
 ## Status
 
-- Sessions 1–9 (Unit I): full content.
-- Sessions 10–45: outlines; full notes are added unit by unit.
+- Unit I: Sessions 1–9 complete (with slide content and 13 interactive tools) and labs L01–L10.
+- Sessions 10–45: outlines; labs for Units II–V to follow.

@@ -1,10 +1,11 @@
-import json
+import json, os
+OUT=os.path.join(os.path.dirname(os.path.abspath(__file__)),'..','sessions.json') if not os.environ.get('OUTJSON') else os.environ['OUTJSON']
 S = []
 def s(unit, title, hook, refs, software, lab, co, kw=""):
     n = len(S) + 1
     S.append(dict(id=f"S{n:02d}", day=n, unit=unit, title=title, hook=hook, co=co, refs=refs,
                   software=software, lab=lab, keywords=kw, file=f"sessions/S{n:02d}.md",
-                  enabled=n <= 3, release=""))
+                  enabled=n <= 9, ready=n <= 9, labs=[], release=""))
 HMS, RAS, GIS, SH = "HEC-HMS", "HEC-RAS", "QGIS", "Spreadsheet"
 # ---------------- Unit I ----------------
 s(1, "Hydrology, the hydrologic cycle and the water budget",
@@ -147,21 +148,54 @@ s(5, "PBL showcase: catchment solutions",
   "Group presentations, peer review and reflection.",
   "—", ["Field/Video"], "Present the four-milestone catchment study", "CO1–CO5", "presentation peer review")
 
+
+LAB_MAP = {
+ "L01": (1, "Install HEC-HMS and explore a working model", "Install HEC-HMS, open the Castro Valley sample, run it, and map every component to the hydrologic cycle.", ["HEC-HMS"], ["S01","S02"], 40),
+ "L02": (1, "Start the course project: basin model, subbasin and outlet", "Create your own HEC-HMS project and draw the 54.85 km² teaching catchment as one subbasin draining to an outlet.", ["HEC-HMS"], ["S03"], 30),
+ "L03": (1, "Rain gauges in HEC-HMS: the Time-Series Data Manager", "Enter the recording gauge TG1 (30-minute storm) and the three non-recording gauges TG2–TG4.", ["HEC-HMS"], ["S03","S04"], 35),
+ "L04": (1, "First simulation: meteorologic model, control specs and results", "Drive the subbasin with TG1, run the model and read the result graph and summary table.", ["HEC-HMS"], ["S03"], 35),
+ "L05": (1, "Gage Weights: Thiessen vs arithmetic mean in HEC-HMS", "Type Thiessen and arithmetic weights into two meteorologic models and compare the runs.", ["HEC-HMS"], ["S05"], 35),
+ "L06": (1, "Missing data inside HEC-HMS", "See what a blank cell does to a run, and run the model with a gap filled by the normal-ratio method.", ["HEC-HMS"], ["S06"], 30),
+ "L07": (1, "Hyetographs, cumulative curves and exporting results", "Read hyetographs and mass curves from HEC-HMS, export time-series tables to a spreadsheet.", ["HEC-HMS","Spreadsheet"], ["S07"], 30),
+ "L08": (1, "A design storm: the Frequency Storm method", "Turn IDF depths into 25- and 100-year design storms and compare their floods with the observed storm.", ["HEC-HMS"], ["S08"], 40),
+ "L09": (1, "QGIS: Thiessen polygons from station data", "Load gauges and a catchment, build Voronoi polygons, clip, compute areas and weights, and print a map.", ["QGIS"], ["S05","S09"], 45),
+ "L10": (1, "HEC-HMS GIS: delineate a catchment from a DEM", "Download and prepare a DEM, then let HEC-HMS fill sinks, find streams and delineate subbasins for your PBL site.", ["QGIS","HEC-HMS"], ["S09"], 60),
+}
+labs=[]
+for lid,(u,t,g,sw,ss,mins) in LAB_MAP.items():
+    labs.append(dict(id=lid, unit=u, title=t, goal=g, software=sw, sessions=ss, minutes=mins, file=f"labs/{lid}.md", enabled=True, release=""))
+    for sid in ss:
+        next(x for x in S if x["id"]==sid)["labs"].append(lid)
 course = dict(code="CE633", short="Hydrology", title="Hydrology and Water Resources Engineering",
-  instructor="Dr Shibu K. Mani", programme="BTech Civil Engineering", semester="Even semester 2026–27",
-  classroom="", department="Department of Civil Engineering, CHRIST (Deemed to be University), Kengeri Campus",
-  footer="CE633 Hydrology and Water Resources Engineering · Department of Civil Engineering, CHRIST (Deemed to be University). Notes are for enrolled students. Textbooks: Subramanya (T1), Jayarami Reddy (T2), Raghunath (T3).")
+  instructor="Dr Shibu K. Mani", email="shibuk.mani@christuniversity.in", programme="BTech Civil Engineering", semester="Even semester 2026–27",
+  classroom="", department="Department of Civil Engineering, CHRIST (Deemed to be University), Kengeri Campus")
 units = [
- dict(n=1, roman="I", title="Introduction to Hydrology and Precipitation", co="CO1", hours=9),
- dict(n=2, roman="II", title="Components of Precipitation (Losses and Runoff)", co="CO2", hours=9),
- dict(n=3, roman="III", title="Hydrographs", co="CO3", hours=9),
- dict(n=4, roman="IV", title="Stream Flow Measurement and Flood Routing", co="CO4, CO5", hours=9),
- dict(n=5, roman="V", title="Ground Water Hydrology and Rainwater Harvesting", co="CO3, CO5", hours=9),
+ dict(n=1, roman="I", short="Precipitation", title="Introduction to Hydrology and Precipitation", co="CO1", hours=9,
+      syllabus="Definition and importance of hydrology; hydrologic cycle. Precipitation: forms and types; Symons' and syphon rain gauges; optimum number of rain-gauge stations; consistency (double mass curve); mean rainfall (arithmetic, Thiessen, isohyetal); missing data (arithmetic, normal ratio, regression); presentation (moving average, mass curve, hyetograph, IDF curves); Thiessen polygon map from meteorological data."),
+ dict(n=2, roman="II", short="Losses & runoff", title="Components of Precipitation (Losses and Runoff)", co="CO2", hours=9,
+      syllabus="Evaporation (IS Class A pan, empirical formulae); infiltration (double-ring infiltrometer, Horton's equation, indices); runoff, catchment, water budget, rainfall-runoff regression; evapotranspiration (AET, PET, Penman, Blaney-Criddle); verification of losses with software; GIS rainfall-runoff model."),
+ dict(n=3, roman="III", short="Hydrographs", title="Hydrographs", co="CO3", hours=9,
+      syllabus="Hydrograph definition and components; unit hydrograph and its derivation from simple storm hydrographs; base-flow separation; S-curve and its uses."),
+ dict(n=4, roman="IV", short="Streamflow & routing", title="Stream Flow Measurement and Flood Routing", co="CO4, CO5", hours=9,
+      syllabus="Measurement of stage; discharge by area-velocity and slope-area methods; stage-discharge relation; streamflow with software. Hydrological flood routing: reservoir and channel routing; flood frequency and forecasting; extreme events."),
+ dict(n=5, roman="V", short="Groundwater & RWH", title="Ground Water Hydrology and Rainwater Harvesting", co="CO3, CO5", hours=9,
+      syllabus="Scope of groundwater hydrology; aquifer parameters; steady radial flow to wells in confined and unconfined aquifers; types of wells and construction. Rainwater harvesting: small-scale and small-tank, urban harvesting, groundwater recharge."),
 ]
 pages = [
- dict(id="setup", title="Software setup", hook="Install HEC-HMS, HEC-RAS and QGIS before Session 2.", file="pages/setup.md"),
- dict(id="pbl", title="Project-Based Learning (CIA III)", hook="One real catchment, four milestones, one driving question.", file="pages/pbl.md"),
- dict(id="assessment", title="Assessment and course policies", hook="CIA components, AI-use log, data citation.", file="pages/assessment.md"),
+ dict(id="setup", ni="⚙", title="Software setup", hook="Install HEC-HMS and QGIS before the first lab.", file="pages/setup.md"),
+ dict(id="pbl", ni="P", title="Project (PBL)", hook="One real catchment, four milestones, one driving question.", file="pages/pbl.md"),
+ dict(id="assessment", ni="A", title="Assessment", hook="CIA components, AI-use log, data citation.", file="pages/assessment.md"),
 ]
-json.dump(dict(course=course, units=units, pages=pages, sessions=S), open("./sessions.json","w"), indent=1, ensure_ascii=False)
-print(len(S))
+links = [
+ ["HEC-HMS download","https://www.hec.usace.army.mil/software/hec-hms/downloads.aspx","#57cc99"],
+ ["HEC-RAS download","https://www.hec.usace.army.mil/software/hec-ras/download.aspx","#e0a46a"],
+ ["QGIS","https://qgis.org/download/","#b9a2e6"],
+ ["India-WRIS","https://indiawris.gov.in/","#4cc9f0"],
+ ["IMD Pune data","https://www.imdpune.gov.in/","#c8973a"],
+ ["KSNDMC","https://www.ksndmc.org/","#c8973a"],
+ ["Bhuvan (DEM)","https://bhuvan.nrsc.gov.in/","#f4a261"],
+ ["GitHub repo","https://github.com/PradhanArpan/hydrology","#57cc99"],
+ ["Google Classroom","https://classroom.google.com","#4cc9f0"],
+]
+json.dump(dict(course=course, units=units, pages=pages, links=links, labs=labs, sessions=S), open(OUT,"w"), indent=1, ensure_ascii=False)
+print(len(S), len(labs))

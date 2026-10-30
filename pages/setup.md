@@ -2,8 +2,8 @@
 
 | Software | Needed from | Platforms | Cost |
 | --- | --- | --- | --- |
-| **HEC-HMS** (Hydrologic Modeling System), latest 4.x | Session 2 | Windows, macOS, Linux | Free (US Army Corps of Engineers) |
-| **QGIS**, current Long Term Release | Session 9 | Windows, macOS, Linux | Free, open source |
+| **HEC-HMS** (Hydrologic Modeling System), latest 4.x | Lab L01, before Session 2 | Windows, macOS, Linux | Free (US Army Corps of Engineers) |
+| **QGIS**, current Long Term Release | Lab L09 (Session 9) | Windows, macOS, Linux | Free, open source |
 | **HEC-RAS** (River Analysis System), latest 6.x | Session 28 | **Windows only** | Free |
 | **HEC-SSP** (Statistical Software Package) | Session 35 | Windows | Free |
 | Excel or Google Sheets | Session 1 | Any | — |
@@ -37,5 +37,5 @@ All datasets used in class are in the `data/` folder of this portal and are link
 ## Getting help
 
 1. Read the **Message Log** in HEC-HMS — it usually names the problem.
-2. Check the session's Software lab tab again, step by step.
+2. Go through the lab's steps again — use **Show all steps** to see the whole sequence at once.
 3. Post the error message and a screenshot in the Google Classroom stream.

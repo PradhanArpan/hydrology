@@ -4,67 +4,294 @@
   "short": "Hydrology",
   "title": "Hydrology and Water Resources Engineering",
   "instructor": "Dr Shibu K. Mani",
+  "email": "shibuk.mani@christuniversity.in",
   "programme": "BTech Civil Engineering",
   "semester": "Even semester 2026–27",
   "classroom": "",
-  "department": "Department of Civil Engineering, CHRIST (Deemed to be University), Kengeri Campus",
-  "footer": "CE633 Hydrology and Water Resources Engineering · Department of Civil Engineering, CHRIST (Deemed to be University). Notes are for enrolled students. Textbooks: Subramanya (T1), Jayarami Reddy (T2), Raghunath (T3)."
+  "department": "Department of Civil Engineering, CHRIST (Deemed to be University), Kengeri Campus"
  },
  "units": [
   {
    "n": 1,
    "roman": "I",
+   "short": "Precipitation",
    "title": "Introduction to Hydrology and Precipitation",
    "co": "CO1",
-   "hours": 9
+   "hours": 9,
+   "syllabus": "Definition and importance of hydrology; hydrologic cycle. Precipitation: forms and types; Symons' and syphon rain gauges; optimum number of rain-gauge stations; consistency (double mass curve); mean rainfall (arithmetic, Thiessen, isohyetal); missing data (arithmetic, normal ratio, regression); presentation (moving average, mass curve, hyetograph, IDF curves); Thiessen polygon map from meteorological data."
   },
   {
    "n": 2,
    "roman": "II",
+   "short": "Losses & runoff",
    "title": "Components of Precipitation (Losses and Runoff)",
    "co": "CO2",
-   "hours": 9
+   "hours": 9,
+   "syllabus": "Evaporation (IS Class A pan, empirical formulae); infiltration (double-ring infiltrometer, Horton's equation, indices); runoff, catchment, water budget, rainfall-runoff regression; evapotranspiration (AET, PET, Penman, Blaney-Criddle); verification of losses with software; GIS rainfall-runoff model."
   },
   {
    "n": 3,
    "roman": "III",
+   "short": "Hydrographs",
    "title": "Hydrographs",
    "co": "CO3",
-   "hours": 9
+   "hours": 9,
+   "syllabus": "Hydrograph definition and components; unit hydrograph and its derivation from simple storm hydrographs; base-flow separation; S-curve and its uses."
   },
   {
    "n": 4,
    "roman": "IV",
+   "short": "Streamflow & routing",
    "title": "Stream Flow Measurement and Flood Routing",
    "co": "CO4, CO5",
-   "hours": 9
+   "hours": 9,
+   "syllabus": "Measurement of stage; discharge by area-velocity and slope-area methods; stage-discharge relation; streamflow with software. Hydrological flood routing: reservoir and channel routing; flood frequency and forecasting; extreme events."
   },
   {
    "n": 5,
    "roman": "V",
+   "short": "Groundwater & RWH",
    "title": "Ground Water Hydrology and Rainwater Harvesting",
    "co": "CO3, CO5",
-   "hours": 9
+   "hours": 9,
+   "syllabus": "Scope of groundwater hydrology; aquifer parameters; steady radial flow to wells in confined and unconfined aquifers; types of wells and construction. Rainwater harvesting: small-scale and small-tank, urban harvesting, groundwater recharge."
   }
  ],
  "pages": [
   {
    "id": "setup",
+   "ni": "⚙",
    "title": "Software setup",
-   "hook": "Install HEC-HMS, HEC-RAS and QGIS before Session 2.",
+   "hook": "Install HEC-HMS and QGIS before the first lab.",
    "file": "pages/setup.md"
   },
   {
    "id": "pbl",
-   "title": "Project-Based Learning (CIA III)",
+   "ni": "P",
+   "title": "Project (PBL)",
    "hook": "One real catchment, four milestones, one driving question.",
    "file": "pages/pbl.md"
   },
   {
    "id": "assessment",
-   "title": "Assessment and course policies",
+   "ni": "A",
+   "title": "Assessment",
    "hook": "CIA components, AI-use log, data citation.",
    "file": "pages/assessment.md"
+  }
+ ],
+ "links": [
+  [
+   "HEC-HMS download",
+   "https://www.hec.usace.army.mil/software/hec-hms/downloads.aspx",
+   "#57cc99"
+  ],
+  [
+   "HEC-RAS download",
+   "https://www.hec.usace.army.mil/software/hec-ras/download.aspx",
+   "#e0a46a"
+  ],
+  [
+   "QGIS",
+   "https://qgis.org/download/",
+   "#b9a2e6"
+  ],
+  [
+   "India-WRIS",
+   "https://indiawris.gov.in/",
+   "#4cc9f0"
+  ],
+  [
+   "IMD Pune data",
+   "https://www.imdpune.gov.in/",
+   "#c8973a"
+  ],
+  [
+   "KSNDMC",
+   "https://www.ksndmc.org/",
+   "#c8973a"
+  ],
+  [
+   "Bhuvan (DEM)",
+   "https://bhuvan.nrsc.gov.in/",
+   "#f4a261"
+  ],
+  [
+   "GitHub repo",
+   "https://github.com/PradhanArpan/hydrology",
+   "#57cc99"
+  ],
+  [
+   "Google Classroom",
+   "https://classroom.google.com",
+   "#4cc9f0"
+  ]
+ ],
+ "labs": [
+  {
+   "id": "L01",
+   "unit": 1,
+   "title": "Install HEC-HMS and explore a working model",
+   "goal": "Install HEC-HMS, open the Castro Valley sample, run it, and map every component to the hydrologic cycle.",
+   "software": [
+    "HEC-HMS"
+   ],
+   "sessions": [
+    "S01",
+    "S02"
+   ],
+   "minutes": 40,
+   "file": "labs/L01.md",
+   "enabled": true,
+   "release": ""
+  },
+  {
+   "id": "L02",
+   "unit": 1,
+   "title": "Start the course project: basin model, subbasin and outlet",
+   "goal": "Create your own HEC-HMS project and draw the 54.85 km² teaching catchment as one subbasin draining to an outlet.",
+   "software": [
+    "HEC-HMS"
+   ],
+   "sessions": [
+    "S03"
+   ],
+   "minutes": 30,
+   "file": "labs/L02.md",
+   "enabled": true,
+   "release": ""
+  },
+  {
+   "id": "L03",
+   "unit": 1,
+   "title": "Rain gauges in HEC-HMS: the Time-Series Data Manager",
+   "goal": "Enter the recording gauge TG1 (30-minute storm) and the three non-recording gauges TG2–TG4.",
+   "software": [
+    "HEC-HMS"
+   ],
+   "sessions": [
+    "S03",
+    "S04"
+   ],
+   "minutes": 35,
+   "file": "labs/L03.md",
+   "enabled": true,
+   "release": ""
+  },
+  {
+   "id": "L04",
+   "unit": 1,
+   "title": "First simulation: meteorologic model, control specs and results",
+   "goal": "Drive the subbasin with TG1, run the model and read the result graph and summary table.",
+   "software": [
+    "HEC-HMS"
+   ],
+   "sessions": [
+    "S03"
+   ],
+   "minutes": 35,
+   "file": "labs/L04.md",
+   "enabled": true,
+   "release": ""
+  },
+  {
+   "id": "L05",
+   "unit": 1,
+   "title": "Gage Weights: Thiessen vs arithmetic mean in HEC-HMS",
+   "goal": "Type Thiessen and arithmetic weights into two meteorologic models and compare the runs.",
+   "software": [
+    "HEC-HMS"
+   ],
+   "sessions": [
+    "S05"
+   ],
+   "minutes": 35,
+   "file": "labs/L05.md",
+   "enabled": true,
+   "release": ""
+  },
+  {
+   "id": "L06",
+   "unit": 1,
+   "title": "Missing data inside HEC-HMS",
+   "goal": "See what a blank cell does to a run, and run the model with a gap filled by the normal-ratio method.",
+   "software": [
+    "HEC-HMS"
+   ],
+   "sessions": [
+    "S06"
+   ],
+   "minutes": 30,
+   "file": "labs/L06.md",
+   "enabled": true,
+   "release": ""
+  },
+  {
+   "id": "L07",
+   "unit": 1,
+   "title": "Hyetographs, cumulative curves and exporting results",
+   "goal": "Read hyetographs and mass curves from HEC-HMS, export time-series tables to a spreadsheet.",
+   "software": [
+    "HEC-HMS",
+    "Spreadsheet"
+   ],
+   "sessions": [
+    "S07"
+   ],
+   "minutes": 30,
+   "file": "labs/L07.md",
+   "enabled": true,
+   "release": ""
+  },
+  {
+   "id": "L08",
+   "unit": 1,
+   "title": "A design storm: the Frequency Storm method",
+   "goal": "Turn IDF depths into 25- and 100-year design storms and compare their floods with the observed storm.",
+   "software": [
+    "HEC-HMS"
+   ],
+   "sessions": [
+    "S08"
+   ],
+   "minutes": 40,
+   "file": "labs/L08.md",
+   "enabled": true,
+   "release": ""
+  },
+  {
+   "id": "L09",
+   "unit": 1,
+   "title": "QGIS: Thiessen polygons from station data",
+   "goal": "Load gauges and a catchment, build Voronoi polygons, clip, compute areas and weights, and print a map.",
+   "software": [
+    "QGIS"
+   ],
+   "sessions": [
+    "S05",
+    "S09"
+   ],
+   "minutes": 45,
+   "file": "labs/L09.md",
+   "enabled": true,
+   "release": ""
+  },
+  {
+   "id": "L10",
+   "unit": 1,
+   "title": "HEC-HMS GIS: delineate a catchment from a DEM",
+   "goal": "Download and prepare a DEM, then let HEC-HMS fill sinks, find streams and delineate subbasins for your PBL site.",
+   "software": [
+    "QGIS",
+    "HEC-HMS"
+   ],
+   "sessions": [
+    "S09"
+   ],
+   "minutes": 60,
+   "file": "labs/L10.md",
+   "enabled": true,
+   "release": ""
   }
  ],
  "sessions": [
@@ -84,6 +311,10 @@
    "keywords": "continuity catchment budget",
    "file": "sessions/S01.md",
    "enabled": true,
+   "ready": true,
+   "labs": [
+    "L01"
+   ],
    "release": ""
   },
   {
@@ -101,6 +332,10 @@
    "keywords": "monsoon orographic convective",
    "file": "sessions/S02.md",
    "enabled": true,
+   "ready": true,
+   "labs": [
+    "L01"
+   ],
    "release": ""
   },
   {
@@ -119,6 +354,12 @@
    "keywords": "rain gauge network optimum number Cv",
    "file": "sessions/S03.md",
    "enabled": true,
+   "ready": true,
+   "labs": [
+    "L02",
+    "L03",
+    "L04"
+   ],
    "release": ""
   },
   {
@@ -136,7 +377,11 @@
    "lab": "Build a double mass curve in a spreadsheet; load the corrected series into HMS",
    "keywords": "double mass curve consistency",
    "file": "sessions/S04.md",
-   "enabled": false,
+   "enabled": true,
+   "ready": true,
+   "labs": [
+    "L03"
+   ],
    "release": ""
   },
   {
@@ -154,7 +399,12 @@
    "lab": "Gage Weights meteorologic model in HEC-HMS: arithmetic vs Thiessen weights",
    "keywords": "thiessen isohyetal average",
    "file": "sessions/S05.md",
-   "enabled": false,
+   "enabled": true,
+   "ready": true,
+   "labs": [
+    "L05",
+    "L09"
+   ],
    "release": ""
   },
   {
@@ -172,7 +422,11 @@
    "lab": "Fill a gap in a station record, then see what the gap does to HMS precipitation",
    "keywords": "normal ratio missing data regression",
    "file": "sessions/S06.md",
-   "enabled": false,
+   "enabled": true,
+   "ready": true,
+   "labs": [
+    "L06"
+   ],
    "release": ""
   },
   {
@@ -190,7 +444,11 @@
    "lab": "Hyetograph and cumulative-depth plots in HMS; moving average in a spreadsheet",
    "keywords": "mass curve hyetograph moving average",
    "file": "sessions/S07.md",
-   "enabled": false,
+   "enabled": true,
+   "ready": true,
+   "labs": [
+    "L07"
+   ],
    "release": ""
   },
   {
@@ -208,7 +466,11 @@
    "lab": "Frequency Storm meteorologic model in HMS driven by IDF depths",
    "keywords": "IDF return period risk weibull DAD",
    "file": "sessions/S08.md",
-   "enabled": false,
+   "enabled": true,
+   "ready": true,
+   "labs": [
+    "L08"
+   ],
    "release": ""
   },
   {
@@ -226,7 +488,12 @@
    "lab": "Voronoi polygons in QGIS; terrain-based subbasin delineation in HMS",
    "keywords": "QGIS voronoi DEM delineation PBL",
    "file": "sessions/S09.md",
-   "enabled": false,
+   "enabled": true,
+   "ready": true,
+   "labs": [
+    "L09",
+    "L10"
+   ],
    "release": ""
   },
   {
@@ -244,6 +511,8 @@
    "keywords": "abstraction evaporation dalton",
    "file": "sessions/S10.md",
    "enabled": false,
+   "ready": false,
+   "labs": [],
    "release": ""
   },
   {
@@ -262,6 +531,8 @@
    "keywords": "class A pan meyer formula",
    "file": "sessions/S11.md",
    "enabled": false,
+   "ready": false,
+   "labs": [],
    "release": ""
   },
   {
@@ -280,6 +551,8 @@
    "keywords": "infiltrometer infiltration capacity",
    "file": "sessions/S12.md",
    "enabled": false,
+   "ready": false,
+   "labs": [],
    "release": ""
   },
   {
@@ -298,6 +571,8 @@
    "keywords": "horton phi index w index",
    "file": "sessions/S13.md",
    "enabled": false,
+   "ready": false,
+   "labs": [],
    "release": ""
   },
   {
@@ -315,6 +590,8 @@
    "keywords": "lysimeter PET AET",
    "file": "sessions/S14.md",
    "enabled": false,
+   "ready": false,
+   "labs": [],
    "release": ""
   },
   {
@@ -333,6 +610,8 @@
    "keywords": "penman blaney criddle",
    "file": "sessions/S15.md",
    "enabled": false,
+   "ready": false,
+   "labs": [],
    "release": ""
   },
   {
@@ -350,6 +629,8 @@
    "keywords": "runoff components curve number",
    "file": "sessions/S16.md",
    "enabled": false,
+   "ready": false,
+   "labs": [],
    "release": ""
   },
   {
@@ -368,6 +649,8 @@
    "keywords": "regression correlation",
    "file": "sessions/S17.md",
    "enabled": false,
+   "ready": false,
+   "labs": [],
    "release": ""
   },
   {
@@ -386,6 +669,8 @@
    "keywords": "PBL milestone verification",
    "file": "sessions/S18.md",
    "enabled": false,
+   "ready": false,
+   "labs": [],
    "release": ""
   },
   {
@@ -403,6 +688,8 @@
    "keywords": "hydrograph limb crest recession",
    "file": "sessions/S19.md",
    "enabled": false,
+   "ready": false,
+   "labs": [],
    "release": ""
   },
   {
@@ -420,6 +707,8 @@
    "keywords": "hydrograph shape factors",
    "file": "sessions/S20.md",
    "enabled": false,
+   "ready": false,
+   "labs": [],
    "release": ""
   },
   {
@@ -438,6 +727,8 @@
    "keywords": "base flow separation N",
    "file": "sessions/S21.md",
    "enabled": false,
+   "ready": false,
+   "labs": [],
    "release": ""
   },
   {
@@ -456,6 +747,8 @@
    "keywords": "ERH DRH effective rainfall",
    "file": "sessions/S22.md",
    "enabled": false,
+   "ready": false,
+   "labs": [],
    "release": ""
   },
   {
@@ -473,6 +766,8 @@
    "keywords": "unit hydrograph linearity",
    "file": "sessions/S23.md",
    "enabled": false,
+   "ready": false,
+   "labs": [],
    "release": ""
   },
   {
@@ -491,6 +786,8 @@
    "keywords": "derivation unit hydrograph",
    "file": "sessions/S24.md",
    "enabled": false,
+   "ready": false,
+   "labs": [],
    "release": ""
   },
   {
@@ -509,6 +806,8 @@
    "keywords": "convolution superposition",
    "file": "sessions/S25.md",
    "enabled": false,
+   "ready": false,
+   "labs": [],
    "release": ""
   },
   {
@@ -526,6 +825,8 @@
    "keywords": "s-curve summation",
    "file": "sessions/S26.md",
    "enabled": false,
+   "ready": false,
+   "labs": [],
    "release": ""
   },
   {
@@ -544,6 +845,8 @@
    "keywords": "snyder SCS synthetic",
    "file": "sessions/S27.md",
    "enabled": false,
+   "ready": false,
+   "labs": [],
    "release": ""
   },
   {
@@ -561,6 +864,8 @@
    "keywords": "staff gauge stage recorder",
    "file": "sessions/S28.md",
    "enabled": false,
+   "ready": false,
+   "labs": [],
    "release": ""
   },
   {
@@ -579,6 +884,8 @@
    "keywords": "current meter area velocity",
    "file": "sessions/S29.md",
    "enabled": false,
+   "ready": false,
+   "labs": [],
    "release": ""
   },
   {
@@ -597,6 +904,8 @@
    "keywords": "slope area manning",
    "file": "sessions/S30.md",
    "enabled": false,
+   "ready": false,
+   "labs": [],
    "release": ""
   },
   {
@@ -615,6 +924,8 @@
    "keywords": "rating curve stage discharge",
    "file": "sessions/S31.md",
    "enabled": false,
+   "ready": false,
+   "labs": [],
    "release": ""
   },
   {
@@ -633,6 +944,8 @@
    "keywords": "routing attenuation storage",
    "file": "sessions/S32.md",
    "enabled": false,
+   "ready": false,
+   "labs": [],
    "release": ""
   },
   {
@@ -651,6 +964,8 @@
    "keywords": "modified puls reservoir",
    "file": "sessions/S33.md",
    "enabled": false,
+   "ready": false,
+   "labs": [],
    "release": ""
   },
   {
@@ -669,6 +984,8 @@
    "keywords": "muskingum K x",
    "file": "sessions/S34.md",
    "enabled": false,
+   "ready": false,
+   "labs": [],
    "release": ""
   },
   {
@@ -687,6 +1004,8 @@
    "keywords": "gumbel frequency forecasting",
    "file": "sessions/S35.md",
    "enabled": false,
+   "ready": false,
+   "labs": [],
    "release": ""
   },
   {
@@ -705,6 +1024,8 @@
    "keywords": "sedimentation trap efficiency brune",
    "file": "sessions/S36.md",
    "enabled": false,
+   "ready": false,
+   "labs": [],
    "release": ""
   },
   {
@@ -722,6 +1043,8 @@
    "keywords": "aquifer confined unconfined",
    "file": "sessions/S37.md",
    "enabled": false,
+   "ready": false,
+   "labs": [],
    "release": ""
   },
   {
@@ -739,6 +1062,8 @@
    "keywords": "specific yield transmissivity storativity",
    "file": "sessions/S38.md",
    "enabled": false,
+   "ready": false,
+   "labs": [],
    "release": ""
   },
   {
@@ -756,6 +1081,8 @@
    "keywords": "darcy dupuit unconfined",
    "file": "sessions/S39.md",
    "enabled": false,
+   "ready": false,
+   "labs": [],
    "release": ""
   },
   {
@@ -773,6 +1100,8 @@
    "keywords": "thiem confined pumping test",
    "file": "sessions/S40.md",
    "enabled": false,
+   "ready": false,
+   "labs": [],
    "release": ""
   },
   {
@@ -790,6 +1119,8 @@
    "keywords": "tube well drilling",
    "file": "sessions/S41.md",
    "enabled": false,
+   "ready": false,
+   "labs": [],
    "release": ""
   },
   {
@@ -807,6 +1138,8 @@
    "keywords": "tank harvesting small scale",
    "file": "sessions/S42.md",
    "enabled": false,
+   "ready": false,
+   "labs": [],
    "release": ""
   },
   {
@@ -825,6 +1158,8 @@
    "keywords": "rooftop storage rippl",
    "file": "sessions/S43.md",
    "enabled": false,
+   "ready": false,
+   "labs": [],
    "release": ""
   },
   {
@@ -843,6 +1178,8 @@
    "keywords": "recharge pit shaft",
    "file": "sessions/S44.md",
    "enabled": false,
+   "ready": false,
+   "labs": [],
    "release": ""
   },
   {
@@ -860,6 +1197,8 @@
    "keywords": "presentation peer review",
    "file": "sessions/S45.md",
    "enabled": false,
+   "ready": false,
+   "labs": [],
    "release": ""
   }
  ]
