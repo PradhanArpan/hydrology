@@ -1,33 +1,70 @@
-# CE633 Hydrology and Water Resources Engineering — course portal
+# CE633 Hydrology and Water Resources Engineering — Course Portal
 
-A static course portal (GitHub Pages) for CE633, Department of Civil Engineering, CHRIST (Deemed to be University), Kengeri Campus. Instructor: Dr Shibu K. Mani.
+A modern, static course delivery portal (GitHub Pages) for **CE633 Hydrology and Water Resources Engineering**, Department of Civil Engineering, CHRIST (Deemed to be University), Kengeri Campus, Bengaluru. Instructor: **Dr Arpan Pradhan**.
 
-The hub (`index.html`) is a small React app styled after the CE541E08 hub: a navy sidebar with units, the lab track and course pages; unit tables with release status; and session pages.
+Repository: [https://github.com/PradhanArpan/hydrology](https://github.com/PradhanArpan/hydrology)  
+Live Site: [https://pradhanarpan.github.io/hydrology/](https://pradhanarpan.github.io/hydrology/)
 
-**Theory sessions** (`sessions/S01.md` … `S45.md`) have three tabs — *Theory* (notes, drawn illustrations, solved numericals and interactive tools), *In class* (a short concept exercise) and *Practice* (self-check quiz, exam-style questions).
+---
 
-**Software lab track** (`labs/L01.md` …) runs in parallel: each lab is a stepper — one step at a time, with "You should see" and "If it does not work" boxes, progress saved in the browser. L01–L10 cover Unit I (HEC-HMS and QGIS).
+## Key Highlights & UI/UX Features
 
-## Layout
+- **Modern Academic LMS Aesthetic**: Calm, high-contrast typography, clear hierarchy, responsive layout (optimized across 390px mobile, 1366px laptop, and 1920px desktop).
+- **Light & Dark Mode**: Persistent theme toggle with seamless switching between ivory paper and dark slate palettes.
+- **Global Instant Search (`/` or `Ctrl+K`)**: Rapid indexed search across all 45 sessions and 16 software labs by title, day number, keywords, and syllabus concepts.
+- **Zero-Login Progress Tracking**: Browser-local storage safely tracks visited theory sessions and completed lab steps with visual progress indicators.
+- **Lesson-Oriented Theory Pages**: "Key ideas" summary at the top, collapsible solutions, interactive calculation widgets, and single-click print-ready lecture notes.
+- **Interactive Lab Stepper**: Step-by-step guidance with zoomable screenshots, checklists, "What you should see", and troubleshooting callouts.
+
+---
+
+## Course Curriculum & Release Structure
+
+- **Unit I: Introduction & Precipitation (S01–S09, L01–L10)**: Hydrologic cycle, water budget, rain gauge networks, consistency (DMC), mean precipitation (Thiessen, Isohyetal), missing data, IDF curves, DAD, and HEC-HMS catchment delineation via QGIS DEM. *(Released & Enabled)*.
+- **Unit II: Abstractions from Precipitation (S10–S18, L11–L16)**: Evaporation physics, Dalton's law, Meyer's formula, IS Class A pan, energy balance, Penman method, Blaney-Criddle, infiltration dynamics, Horton's equation, $\phi$-index, $W$-index, SCS Curve Number, and HEC-HMS loss method modeling. *(Authored full notes & ready for review; preview via `?preview=1`)*.
+- **Unit III: Hydrographs & Streamflow Synthesis (S19–S27)**: Hydrograph components, baseflow separation techniques, Unit Hydrograph theory, deconvolution from complex storms, S-curve duration conversion, Snyder's synthetic UH, SCS dimensionless UH, Instantaneous Unit Hydrograph (Clark & Nash models), and flood routing (Modified Puls & Muskingum channel routing). *(Authored full notes & ready for review; preview via `?preview=1`)*.
+- **Units IV & V (S28–S45)**: Streamflow measurement, stage-discharge rating curves, flood frequency analysis (Gumbel, Log-Pearson III), groundwater hydraulics (Darcy, Dupuit-Thiem, Theis, Cooper-Jacob), open well recuperation tests, and managed aquifer recharge (MAR). *(Detailed syllabus outlines listing theory topics, numerical problem types, and lab exercises)*.
+
+---
+
+## Interactive Widgets & Visualizations
+
+The course portal includes 29 custom interactive widgets and SVG illustrations:
+- **Precipitation & Networks**: `precip`, `gauges`, `tipping`, `stormnet`, `network`, `thiessen`, `dmc`, `missing`, `movavg`, `risk`, `idf`, `dad`, `d8`.
+- **Losses & Abstractions**: `hortonfit` (interactive Horton infiltration curve fitter), `phiindex` (hyetograph $\phi$-index and runoff finder), `scscn` (SCS-CN calculator with AMC adjustment), `pencalc` (Penman daily potential evapotranspiration energy-aerodynamic calculator).
+- **Physical Schematics & Tours**: `cycle`, `horton`, `catchment`, `indiawater`, `globalwater`, `waterbudget`, `threemethods`, `hmstour`, `hmselements`, `qgistour`, `rasconcept`.
+
+---
+
+## Directory Layout
 
 ```
-index.html          the hub (loads assets/app.js)
-sessions.json       course info, units, pages, quick links, theory sessions and labs (enabled flags)
-sessions/Sxx.md     theory sessions; tabs split by <!--tab:Name-->
-labs/Lxx.md         software labs; steps split by <!--step: Title--> … <!--end-->
-pages/              setup, PBL and assessment pages
-data/               lab datasets (U1_* are synthetic teaching data)
-software/           introductions to HEC-HMS, QGIS, HEC-RAS, HEC-SSP
-assets/img/labs/    lab schematics
-assets/app.js       built bundle (React) — rebuilt from src/ with tools/build.sh
-src/                React source: app.jsx (shell and views), widgets.jsx (tools), illos.jsx (SVG illustrations), charts.jsx, md.js
-tools/              data, figure and sessions.json generators; build.sh
+index.html          the hub (loads assets/app.js and assets/style.css)
+sessions.json       course info, units, theory sessions, software labs, links
+sessions/Sxx.md     theory sessions (tabs: Theory, In class, Software lab, Practice)
+labs/Lxx.md         software labs (step-by-step with real screenshots)
+software/           quick start guides for HEC-HMS, QGIS, HEC-RAS, HEC-SSP
+pages/              course pages (software setup, PBL guide, assessment, references)
+data/               synthetic teaching datasets
+assets/img/labs/    real software screenshots and diagrams
+assets/app.js       built bundle (React 18 single-page application)
+assets/style.css    custom CSS theme variables, print rules, search modal, responsive layouts
+src/                React source code: app.jsx, widgets.jsx, illos.jsx, md.js, charts.jsx
+tools/              build scripts (build.js, build.sh), verification suite (verify_all.py)
 ```
 
-Content edits (Markdown, JSON) need no build step. Only changes to `src/` need `tools/build.sh` (Node.js).
+---
 
-## Status
+## Development & Verification
 
-- Unit I: Sessions 1–9 complete (slide content, 25 interactive tools and illustrations, self-checking exercises) and labs L01–L10.
-- Software introductions (HEC-HMS, QGIS, HEC-RAS, HEC-SSP) and a references page.
-- Sessions 10–45: outlines; labs for Units II–V to follow.
+To make changes to UI components in `src/`:
+1. Edit files in `src/`.
+2. Build the bundle:
+   ```bash
+   node tools/build.js
+   ```
+3. Run the full verification test suite:
+   ```bash
+   python tools/verify_all.py
+   ```
+4. Verify all tests pass with 0 errors and commit both source and `assets/app.js`.
