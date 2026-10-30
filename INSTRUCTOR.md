@@ -18,7 +18,8 @@ Sessions are Markdown files in `sessions/`. Conventions:
 | `$...$`, `$$...$$` | Inline and display maths (KaTeX) |
 | `> [!exam] Title` then `> text` | Coloured callout. Types: `exam`, `note`, `warn`, `hms`, `ras`, `task` |
 | `:::sol Show solution` … `:::` | Collapsible worked solution |
-| `::widget[name]` on its own line | An interactive tool. Unit I tools: `waterbudget`, `globalwater`, `precip`, `tipping`, `network`, `dmc`, `thiessen`, `missing`, `storm`, `movavg`, `risk`, `idf`, `d8` |
+| `::widget[name]` on its own line | An interactive tool. Available: `cycle`, `horton`, `catchment`, `indiawater`, `globalwater`, `waterbudget`, `precip`, `gauges`, `tipping`, `stormnet`, `network`, `dmc`, `threemethods`, `thiessen`, `missing`, `storm`, `movavg`, `risk`, `idf`, `dad`, `d8`, `hmstour`, `hmselements`, `qgistour`, `rasconcept` |
+| ```` ```check ```` + JSON + ```` ``` ```` | Numeric answer box: `[{"q": "...", "answer": 102.8, "tol": 0.02, "unit": "mm", "hint": "...", "solution": "..."}]` (tol = relative tolerance) |
 | `![Caption — Source](path)` alone on a line | Figure with caption; `:::gallery` … `:::` makes a row of thumbnails (click to enlarge) |
 | `:::task Title` … `:::` | Dashed activity box (also `:::note`, `:::hms`, `:::warn`) |
 | ```` ```quiz ```` + JSON + ```` ``` ```` | Self-marking quiz: `[{"q": "...", "options": ["..."], "answer": 0, "why": "..."}]` |

@@ -78,6 +78,51 @@
    "title": "Assessment",
    "hook": "CIA components, AI-use log, data citation.",
    "file": "pages/assessment.md"
+  },
+  {
+   "id": "references",
+   "ni": "R",
+   "title": "References",
+   "hook": "Textbooks, software manuals, standards and data sources used in this portal.",
+   "file": "pages/references.md"
+  }
+ ],
+ "software": [
+  {
+   "id": "hms",
+   "ni": "H",
+   "title": "About HEC-HMS",
+   "when": "FROM SESSION 2 · LABS L01–L08",
+   "hook": "The rainfall–runoff model at the centre of the course: what it is, how a model is organised, what happens in a subbasin.",
+   "color": "#2d6a4f",
+   "file": "software/hms.md"
+  },
+  {
+   "id": "qgis",
+   "ni": "Q",
+   "title": "About QGIS",
+   "when": "SESSIONS 5, 9 · LABS L09–L10",
+   "hook": "The GIS for gauges, polygons, DEMs and maps: vector vs raster, coordinate systems, the tools we use.",
+   "color": "#5a3e8c",
+   "file": "software/qgis.md"
+  },
+  {
+   "id": "ras",
+   "ni": "R",
+   "title": "About HEC-RAS",
+   "when": "UNIT IV",
+   "hook": "River hydraulics: water levels, velocities and flood extents from discharge.",
+   "color": "#8a4b12",
+   "file": "software/ras.md"
+  },
+  {
+   "id": "ssp",
+   "ni": "S",
+   "title": "About HEC-SSP",
+   "when": "SESSION 35",
+   "hook": "Flood-frequency analysis (Bulletin 17C, log-Pearson III) with confidence limits.",
+   "color": "#1a5f7a",
+   "file": "software/ssp.md"
   }
  ],
  "links": [

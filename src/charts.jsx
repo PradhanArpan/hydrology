@@ -12,7 +12,7 @@ function niceTicks(lo, hi, count = 5) {
 const fmt = v => Math.abs(v) >= 1000 ? v.toLocaleString("en-IN") : +v.toFixed(3) + "";
 
 // Generic 2-D plot. children(sx, sy, inner) draws series.
-export function Plot({ w = 640, h = 300, x, y, xLabel, yLabel, xLog, yLog, xTicks, yTicks, children, m = { l: 56, r: 14, t: 12, b: 42 }, onPointer }) {
+export function Plot({ w = 640, h = 300, x, y, xLabel, yLabel, xLog, yLog, xTicks, yTicks, xFmt, children, m = { l: 56, r: 14, t: 12, b: 42 }, onPointer }) {
   const iw = w - m.l - m.r, ih = h - m.t - m.b;
   const tx = v => xLog ? Math.log10(v) : v, ty = v => yLog ? Math.log10(v) : v;
   const sx = v => m.l + (tx(v) - tx(x[0])) / (tx(x[1]) - tx(x[0])) * iw;
@@ -32,7 +32,7 @@ export function Plot({ w = 640, h = 300, x, y, xLabel, yLabel, xLog, yLog, xTick
     <svg ref={ref} viewBox={`0 0 ${w} ${h}`} onPointerMove={handle} onPointerDown={handle} style={{ fontFamily: "DM Sans, sans-serif" }}>
       <rect x={m.l} y={m.t} width={iw} height={ih} fill="#fff" />
       {yt.map(v => <g key={"y" + v}><line x1={m.l} x2={m.l + iw} y1={sy(v)} y2={sy(v)} stroke="#eee8dd" /><text x={m.l - 6} y={sy(v) + 3.5} fontSize="10" textAnchor="end" fill="#5a5048">{fmt(v)}</text></g>)}
-      {xt.map(v => <g key={"x" + v}><line x1={sx(v)} x2={sx(v)} y1={m.t + ih} y2={m.t + ih + 4} stroke="#a09080" /><text x={sx(v)} y={m.t + ih + 15} fontSize="10" textAnchor="middle" fill="#5a5048">{fmt(v)}</text></g>)}
+      {xt.map(v => <g key={"x" + v}><line x1={sx(v)} x2={sx(v)} y1={m.t + ih} y2={m.t + ih + 4} stroke="#a09080" /><text x={sx(v)} y={m.t + ih + 15} fontSize="10" textAnchor="middle" fill="#5a5048">{(xFmt || fmt)(v)}</text></g>)}
       <line x1={m.l} x2={m.l + iw} y1={m.t + ih} y2={m.t + ih} stroke="#a09080" />
       <line x1={m.l} x2={m.l} y1={m.t} y2={m.t + ih} stroke="#a09080" />
       {xLabel && <text x={m.l + iw / 2} y={h - 6} fontSize="11" textAnchor="middle" fill="#1a3260" fontWeight="600">{xLabel}</text>}

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Plot, path, Legend, C } from "./charts.jsx";
+import { ILLOS, FormIcon } from "./illos.jsx";
 
 const f1 = v => (isFinite(v) ? (+v).toFixed(1) : "–");
 const f2 = v => (isFinite(v) ? (+v).toFixed(2) : "–");
@@ -96,11 +97,13 @@ function GlobalWater() {
 
 /* ============ S02: forms & types ============ */
 const FORMS = [
-  ["Rain", "assets/img/ppt/form_rain.jpg", "Drops 0.5–6 mm. Light < 2.5 mm/h, moderate 2.5–7.5 mm/h, heavy > 7.5 mm/h. Larger drops break up while falling."],
-  ["Snow", "assets/img/ppt/form_snow.jpg", "Ice crystals, usually as flakes; density 0.06–0.15 g/cm³. In India, mainly the Himalaya."],
-  ["Hail", "assets/img/ppt/form_hail.jpg", "Showery precipitation of irregular ice lumps over about 8 mm, formed in violent thunderstorms with strong updrafts."],
-  ["Dew", "assets/img/ppt/form_dew.jpg", "Water condensing directly on cool surfaces at night. Not counted in rainfall totals."],
-  ["Frost / glaze", "assets/img/ppt/form_frost.jpg", "Frost forms below 0 °C on surfaces. Glaze is rain or drizzle freezing on contact with ground at or below 0 °C, forming an ice coat."],
+  ["Rain", "rain", "Drops 0.5–6 mm. Light < 2.5 mm/h, moderate 2.5–7.5 mm/h, heavy > 7.5 mm/h. Larger drops break up while falling."],
+  ["Drizzle", "drizzle", "Fine droplets under 0.5 mm falling slowly; intensity usually under 1 mm/h."],
+  ["Snow", "snow", "Ice crystals, usually as flakes; density 0.06–0.15 g/cm³. In India, mainly the Himalaya."],
+  ["Hail", "hail", "Showery precipitation of irregular ice lumps over about 8 mm, built up in layers inside violent thunderstorms with strong updrafts."],
+  ["Glaze", "glaze", "Rain or drizzle that freezes on contact with ground or objects at or below 0 °C, forming an ice coat."],
+  ["Dew", "dew", "Water condensing directly on cool surfaces at night. Not counted in rainfall totals."],
+  ["Frost", "frost", "Ice crystals formed directly on surfaces below 0 °C."],
 ];
 function Frontal() {
   return <svg viewBox="0 0 300 150"><defs><linearGradient id="cold" x1="0" x2="1"><stop offset="0" stopColor="#9cc3d3" /><stop offset="1" stopColor="#d7e9f0" /></linearGradient></defs>
@@ -109,6 +112,22 @@ function Frontal() {
     <path d="M60 55 L180 30" stroke="#9a3b1a" strokeWidth="2" markerEnd="url(#ah)" /><defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="#9a3b1a" /></marker></defs>
     <ellipse cx="210" cy="22" rx="40" ry="12" fill="#cfd6dd" />{[195, 205, 215, 225].map(x => <line key={x} x1={x} y1="34" x2={x - 4} y2="52" stroke="#1a5f7a" />)}
     <text x="150" y="145" fontSize="10" fill="#a09080">front: warm air forced up over cold air</text></svg>;
+}
+function CyclonePlan() {
+  const [hi, setHi] = useState(false);
+  return <svg viewBox="0 0 300 150"><rect width="300" height="150" fill="#fff" />
+    <g transform="translate(80 75)"><g style={{ animation: "spin 6s linear infinite", transformOrigin: "0 0" }}>{[0, 90, 180, 270].map(a => <path key={a} transform={`rotate(${a})`} d="M0 0 C 20 -10 40 -10 58 6" stroke="#1f6f8f" strokeWidth="5" fill="none" strokeLinecap="round" opacity=".8" />)}</g>
+      <circle r="8" fill="#fff" stroke="#0f1f3d" /><text y="62" fontSize="11" textAnchor="middle" fill="#0f1f3d">LOW · air spirals in, rises</text></g>
+    <g transform="translate(220 75)">{[0, 90, 180, 270].map(a => <path key={a} transform={`rotate(${a})`} d="M10 0 L50 0" stroke="#8a4b12" strokeWidth="3" markerEnd="url(#cyo)" />)}<circle r="9" fill="#fbe9e1" stroke="#8a4b12" /><text y="62" fontSize="11" textAnchor="middle" fill="#8a4b12">HIGH · air sinks, spreads out</text></g>
+    <defs><marker id="cyo" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10z" fill="#8a4b12" /></marker></defs>
+    <text x="80" y="14" fontSize="11" textAnchor="middle" fill="#1f6f8f" fontWeight="600">Cyclone (anticlockwise, N. hemisphere)</text><text x="220" y="14" fontSize="11" textAnchor="middle" fill="#8a4b12" fontWeight="600">Anticyclone</text></svg>;
+}
+function Convective() {
+  return <svg viewBox="0 0 300 150"><rect width="300" height="150" fill="#fff" /><rect y="128" width="300" height="22" fill="#c9a878" />
+    <circle cx="40" cy="30" r="16" fill="#e8b95a" />{[0, 1, 2].map(i => <path key={i} className="anim-rise" style={{ animationDelay: i * 0.9 + "s" }} d={`M${120 + i * 22} 125 q6 -10 0 -20 q-6 -10 0 -20`} stroke="#c8973a" strokeWidth="2" fill="none" />)}
+    <path d="M110 70 C100 40 140 10 170 25 C200 5 240 30 225 60 C250 70 240 92 215 90 L120 90 C95 92 92 72 110 70Z" fill="#dfe6ee" stroke="#9fb0bf" strokeWidth="2" />
+    {[135, 155, 175, 195].map((x, i) => <line key={x} className="anim-fall" style={{ animationDelay: i * 0.3 + "s" }} x1={x} y1="95" x2={x - 4} y2="112" stroke="#1f6f8f" strokeWidth="2" />)}
+    <text x="150" y="145" fontSize="10.5" textAnchor="middle" fill="#3a332c">heated ground → rising air → towering cloud → short, intense rain</text></svg>;
 }
 function Orographic() {
   return <svg viewBox="0 0 300 150"><rect width="300" height="150" fill="#fff" /><path d="M0 140 L110 140 L170 40 L230 140 L300 140 L300 150 L0 150Z" fill="#7a9a5a" />
@@ -120,15 +139,15 @@ function Orographic() {
 }
 const TYPES = [
   ["Frontal", <Frontal />, "Two air masses of different temperature and density meet. Warm, lighter air is forced up over the cold air along the front and cools to condensation. Cold fronts: short, intense rain; warm fronts: long, moderate rain over wide areas.", "Western disturbances bringing winter rain and snow to north-west India."],
-  ["Cyclonic", <img src="assets/img/ppt/cyclone_satellite.jpg" alt="Cyclone from satellite" />, "A large low-pressure system; air converges and spirals in — anticlockwise in the northern hemisphere — and rises. Tropical cyclones form over warm seas and bring very heavy rain and storm surge. Anticyclones (highs) have outward, clockwise winds and calm centres.", "Bay of Bengal cyclones striking Odisha and Andhra Pradesh in Oct–Nov."],
-  ["Convective", <img src="assets/img/ppt/convective.jpg" alt="Convective precipitation" />, "Local surface heating makes air rise, cool and condense into cumulonimbus clouds. Intense, short, local (about 10 km across).", "Bengaluru's April–May and post-monsoon evening thunderstorms."],
+  ["Cyclonic", <CyclonePlan />, "A large low-pressure system; air converges and spirals in — anticlockwise in the northern hemisphere — and rises. Tropical cyclones form over warm seas and bring very heavy rain and storm surge. Anticyclones (highs) have outward, clockwise winds and calm centres.", "Bay of Bengal cyclones striking Odisha and Andhra Pradesh in Oct–Nov."],
+  ["Convective", <Convective />, "Local surface heating makes air rise, cool and condense into cumulonimbus clouds. Intense, short, local (about 10 km across).", "Bengaluru's April–May and post-monsoon evening thunderstorms."],
   ["Orographic", <Orographic />, "Moist air forced up a mountain barrier cools and rains on the windward side; descending air on the leeward side is dry — a rain shadow.", "Western Ghats: Agumbe gets several thousand mm while places just east on the plateau get far less."],
 ];
 function PrecipExplorer() {
   const [f, setF] = useState(0); const [t, setT] = useState(3);
   return <Box title="Forms and types of precipitation">
     <div className="sec-title" style={{ marginTop: 0 }}>Forms — click a photo</div>
-    <div className="cards">{FORMS.map(([n, img], i) => <button key={n} className={"cardpick" + (i === f ? " on" : "")} onClick={() => setF(i)}><img src={img} alt={n} /><div>{n}</div></button>)}</div>
+    <div className="cards">{FORMS.map(([n, k], i) => <button key={n} className={"cardpick" + (i === f ? " on" : "")} onClick={() => setF(i)}><FormIcon k={k} /><div>{n}</div></button>)}</div>
     <div className="detail"><h4>{FORMS[f][0]}</h4>{FORMS[f][2]}</div>
     <div className="sec-title">Types — by what lifts the air</div>
     <Seg value={t} onChange={setT} options={TYPES.map((x, i) => [i, x[0]])} />
@@ -367,7 +386,7 @@ function MovingAverage() {
       <Seg value={ds} onChange={setDs} options={[["slide", "Slide data 1950–1979"], ["course", "Course station A 1991–2020"]]} />
       <Seg value={m} onChange={setM} options={[[3, "3-yr"], [5, "5-yr"], [7, "7-yr"]]} />
     </div>
-    <Plot w={680} h={280} x={[y0 - 1, y1 + 1]} y={[0, ym]} xLabel="Year" yLabel="Annual rainfall (mm)">{(sx, sy) => <>
+    <Plot w={680} h={280} xFmt={v => String(v)} x={[y0 - 1, y1 + 1]} y={[0, ym]} xLabel="Year" yLabel="Annual rainfall (mm)">{(sx, sy) => <>
       {rows.map(r => <rect key={r.year} x={sx(r.year - 0.4)} width={sx(0.8) - sx(0)} y={sy(r.P)} height={sy(0) - sy(r.P)} fill={r.P < th ? "#f0b9a5" : "#c9dbe3"}><title>{r.year}: {r.P} mm</title></rect>)}
       <line x1={sx(y0 - 1)} x2={sx(y1 + 1)} y1={sy(mu)} y2={sy(mu)} stroke={C.grey} strokeDasharray="3 3" />
       <line x1={sx(y0 - 1)} x2={sx(y1 + 1)} y1={sy(th)} y2={sy(th)} stroke={C.warn} strokeDasharray="6 3" />
@@ -483,4 +502,4 @@ function D8() {
   </Box>;
 }
 
-export const WIDGETS = { waterbudget: WaterBudget, globalwater: GlobalWater, precip: PrecipExplorer, tipping: TippingBucket, network: GaugeNetwork, dmc: DoubleMass, thiessen: Thiessen, missing: MissingData, storm: StormExplorer, movavg: MovingAverage, risk: RiskCalc, idf: WeibullIDF, d8: D8 };
+export const WIDGETS = { ...ILLOS, waterbudget: WaterBudget, globalwater: GlobalWater, precip: PrecipExplorer, tipping: TippingBucket, network: GaugeNetwork, dmc: DoubleMass, thiessen: Thiessen, missing: MissingData, storm: StormExplorer, movavg: MovingAverage, risk: RiskCalc, idf: WeibullIDF, d8: D8 };

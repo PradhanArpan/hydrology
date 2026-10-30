@@ -24,14 +24,33 @@ function useRoute() {
 const go = h => { location.hash = h; };
 
 /* ---------- Markdown block with live React widgets ---------- */
-function Content({ md }) {
+function Content({ md, onHeads }) {
   const ref = useRef(); const [mounts, setMounts] = useState([]);
   const html = React.useMemo(() => renderMd(md), [md]);
   useLayoutEffect(() => {
     ref.current.innerHTML = html; enhance(ref.current);
+    const hs = [...ref.current.querySelectorAll("h2, h3")].map((h, k) => { h.id = h.id || "h" + k + "-" + h.textContent.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 30); return { id: h.id, t: h.textContent, lv: h.tagName }; });
+    if (onHeads) onHeads(hs);
     setMounts([...ref.current.querySelectorAll(".wg-mount")].map(el => ({ el, name: el.dataset.w })));
   }, [html]);
   return <><div className="prose" ref={ref} />{mounts.map((m, i) => { const W = WIDGETS[m.name]; return createPortal(W ? <W /> : <div className="callout warn">Unknown widget: {m.name}</div>, m.el, i); })}</>;
+}
+const jump = (e, id) => { e.preventDefault(); const el = document.getElementById(id); if (el) el.scrollIntoView({ behavior: "smooth", block: "start" }); };
+function Toc({ heads }) {
+  if (!heads || !heads.length) return null;
+  return <div className="rail-box"><h5>On this tab</h5><div className="pad">{heads.map(h => <a key={h.id} href="#" className={h.lv === "H3" ? "h3" : ""} onClick={e => jump(e, h.id)}>{h.t}</a>)}</div></div>;
+}
+function UnitRail({ data, unit, cur, preview }) {
+  const ss = data.sessions.filter(s => s.unit === unit);
+  return <div className="rail-box"><h5>Unit {ROMAN[unit]} sessions</h5><div className="pad">{ss.map(s => <a key={s.id} href={"#/s/" + s.id} className={(s.id === cur ? "cur " : "") + (s.enabled || preview ? "" : "lock")}><span className="d">{s.id}</span>{s.title}</a>)}</div></div>;
+}
+function LabRail({ data, ids, cur, preview, title }) {
+  const ls = (ids ? ids.map(id => data.labs.find(l => l.id === id)) : data.labs).filter(Boolean);
+  if (!ls.length) return null;
+  return <div className="rail-box"><h5>{title}</h5><div className="pad">{ls.map(l => <a key={l.id} href={"#/lab/" + l.id} className={(l.id === cur ? "cur " : "") + (l.enabled || preview ? "" : "lock")}><span className="d">{l.id}</span>{l.title}</a>)}</div></div>;
+}
+function SoftRail({ data, cur }) {
+  return <div className="rail-box"><h5>Meet the software</h5><div className="pad">{data.software.map(p => <a key={p.id} href={"#/sw/" + p.id} className={p.id === cur ? "cur" : ""}><span className="d">{p.ni}</span>{p.title}</a>)}</div></div>;
 }
 function useText(path) {
   const [t, setT] = useState(null);
@@ -46,7 +65,7 @@ function splitTabs(src) {
 }
 
 /* ---------- Sidebar ---------- */
-function Sidebar({ data, route, open, close }) {
+function Sidebar({ data, route, open, close, preview }) {
   const c = data.course;
   const Nav = ({ to, ni, children, active }) => <a className={"nav-btn" + (active ? " active" : "")} href={"#/" + to} onClick={close}><span className="ni">{ni}</span>{children}</a>;
   const sess = route[0] === "s" ? data.sessions.find(s => s.id === route[1]) : null;
@@ -61,9 +80,12 @@ function Sidebar({ data, route, open, close }) {
     </div>
     <div className="nav-lbl">Theory · Units</div>
     <Nav to="" ni="⌂" active={route[0] === "home"}>Home</Nav>
-    {data.units.map(u => <Nav key={u.n} to={"unit/" + u.n} ni={"U" + u.n} active={unitActive(u.n)}>Unit {u.n} — {u.short}</Nav>)}
+    {data.units.map(u => <React.Fragment key={u.n}><Nav to={"unit/" + u.n} ni={"U" + u.n} active={unitActive(u.n)}>Unit {u.n} — {u.short}</Nav>
+      {unitActive(u.n) && <div className="sub-nav">{data.sessions.filter(s => s.unit === u.n && (s.enabled || preview)).map(s => <a key={s.id} href={"#/s/" + s.id} onClick={close} className={sess && sess.id === s.id ? "cur" : ""}><span className="d">{s.day}</span>{s.title}</a>)}</div>}</React.Fragment>)}
     <div className="nav-lbl">Software · Lab track</div>
-    <Nav to="labs" ni="L" active={route[0] === "labs" || !!lab}>HEC-HMS · QGIS labs</Nav>
+    <Nav to="labs" ni="L" active={route[0] === "labs" || !!lab}>Lab track (step by step)</Nav>
+    {(route[0] === "labs" || lab) && <div className="sub-nav">{data.labs.filter(l => l.enabled || preview).map(l => <a key={l.id} href={"#/lab/" + l.id} onClick={close} className={lab && lab.id === l.id ? "cur" : ""}><span className="d">{l.id}</span>{l.title}</a>)}</div>}
+    {data.software.map(p => <Nav key={p.id} to={"sw/" + p.id} ni={p.ni} active={route[0] === "sw" && route[1] === p.id}>{p.title}</Nav>)}
     <div className="nav-lbl">Course</div>
     {data.pages.map(p => <Nav key={p.id} to={"page/" + p.id} ni={p.ni} active={route[0] === "page" && route[1] === p.id}>{p.title}</Nav>)}
     <div className="sb-links">
@@ -132,6 +154,8 @@ function LabsPage({ data, preview }) {
     <div className="unit-hero"><div><div className="uh-num">Runs in parallel with the theory</div><div className="uh-name">Learn the software one step at a time</div>
       <div className="uh-syl">Each lab is a sequence of small steps: what to click, what you should see, and what to do if it goes wrong. Labs build on each other — one HEC-HMS project grows through the semester — so do them in order. The "With theory" column shows which theory session each lab accompanies.</div></div>
       <div className="uh-right"><a className="edit-btn" href="#/page/setup">Install software →</a></div></div>
+    <div className="sec-title">Meet the software first</div>
+    <div className="softcards">{data.software.map(p => <a key={p.id} className="softcard" href={"#/sw/" + p.id} style={{ borderTopColor: p.color }}><i>{p.when}</i><b>{p.title}</b><span>{p.hook}</span></a>)}</div>
     {groups.map(g => <div key={g}><div className="sec-title">Unit {ROMAN[g]} labs</div>
       <div className="tw"><table className="t"><thead><tr><th style={{ width: 56 }}>Lab</th><th>What you will do</th><th>Software</th><th>With theory</th><th>Open</th><th style={{ width: 92 }}>Status</th></tr></thead><tbody>
         {data.labs.filter(l => l.unit === g).map(l => { const can = l.enabled || preview; return <tr key={l.id} className={l.enabled ? "" : "locked"}>
@@ -148,24 +172,29 @@ function LabsPage({ data, preview }) {
 function SessionView({ data, id, preview }) {
   const s = data.sessions.find(x => x.id === id);
   const src = useText(s && (s.enabled || preview) ? s.file : null);
-  const [tab, setTab] = useState(0);
-  useEffect(() => setTab(0), [id]);
+  const [tab, setTab] = useState(0); const [heads, setHeads] = useState({});
+  useEffect(() => { setTab(0); setHeads({}); }, [id]);
   if (!s) return <div className="page"><div className="locked-box">Session not found.</div></div>;
   const u = data.units.find(x => x.n === s.unit);
   const labs = (s.labs || []).map(l => data.labs.find(x => x.id === l)).filter(Boolean);
   const vis = data.sessions.filter(x => x.enabled || preview), i = vis.findIndex(x => x.id === id), prev = vis[i - 1], next = vis[i + 1];
   const parts = src ? splitTabs(src) : [];
+  const pick = j => { setTab(j); const m = document.querySelector(".main"); if (m) m.scrollTo({ top: 0 }); window.scrollTo(0, 0); };
   return <div className="page">
     <div className="ph"><div><div className="crumb"><a href="#/">CE633</a> / <a href={"#/unit/" + u.n}>Unit {ROMAN[u.n]}</a> / {s.id} · Day {s.day}</div><h1>{s.title}</h1><div className="hook">{s.hook}</div>
-      <div className="sess-meta"><span className={"co-badge " + UB[u.n]}>{s.co}</span>{s.refs && <span className="chip other">Ref: {s.refs}</span>}{(s.software || []).map(x => <Chip key={x} s={x} />)}{!s.enabled && <span className="chip other">locked · instructor preview</span>}</div></div>
+      <div className="sess-meta"><span className={"co-badge " + UB[u.n]}>{s.co}</span>{s.refs && <span className="chip other">Ref: {s.refs}</span>}{(s.software || []).map(x => <Chip key={x} s={x} />)}{!s.enabled && <span className="chip other">locked · instructor preview</span>}</div>
+      <div className="topnav">{prev && <a href={"#/s/" + prev.id}>← {prev.id}</a>}<a href={"#/unit/" + u.n}>Unit {ROMAN[u.n]} list</a>{next && <a href={"#/s/" + next.id}>{next.id} →</a>}{labs.filter(l => l.enabled || preview).map(l => <a key={l.id} href={"#/lab/" + l.id} style={{ color: "#2d6a4f" }}>Lab {l.id} ▶</a>)}</div></div>
       <div className="ph-tag">{s.id}</div></div>
-    {!s.enabled && !preview ? <div className="locked-box"><p style={{ fontSize: 26 }}>🔒</p><p>This session has not been released yet.</p></div> : !src ? <p>Loading…</p> : <>
-      {parts.length > 1 && <div className="tabs">{parts.map((p, j) => <button key={p.name} className={j === tab ? "on" : ""} onClick={() => setTab(j)}><span className="k">{String(j + 1).padStart(2, "0")}</span>{p.name}</button>)}</div>}
-      {parts.map((p, j) => <div key={id + j} style={{ display: j === tab ? "" : "none" }}><Content md={p.md} /></div>)}
-      {labs.length > 0 && <div className="labbar"><div><b>Software lab track</b><span>{labs.map(l => l.id + " · " + l.title).join("  ·  ")}</span></div>
-        <div className="btn-row">{labs.map(l => (l.enabled || preview) ? <a key={l.id} className="lnk lab" href={"#/lab/" + l.id}>▶ {l.id}</a> : <span key={l.id} className="locked-pill">🔒 {l.id}</span>)}</div></div>}
-      <div className="pager">{prev ? <a href={"#/s/" + prev.id}><small>← PREVIOUS</small>{prev.id} · {prev.title}</a> : <span />}{next ? <a href={"#/s/" + next.id} style={{ textAlign: "right" }}><small>NEXT →</small>{next.id} · {next.title}</a> : <span />}</div>
-    </>}
+    {!s.enabled && !preview ? <div className="locked-box"><p style={{ fontSize: 26 }}>🔒</p><p>This session has not been released yet.</p></div> : !src ? <p>Loading…</p> : <div className="with-rail">
+      <div>
+        {parts.length > 1 && <div className="tabs">{parts.map((p, j) => <button key={p.name} className={j === tab ? "on" : ""} onClick={() => pick(j)}><span className="k">{String(j + 1).padStart(2, "0")}</span>{p.name}</button>)}</div>}
+        {parts.map((p, j) => <div key={id + j} style={{ display: j === tab ? "" : "none" }}><Content md={p.md} onHeads={h => setHeads(o => ({ ...o, [j]: h }))} /></div>)}
+        {labs.length > 0 && <div className="labbar"><div><b>Software lab track</b><span>{labs.map(l => l.id + " · " + l.title).join("  ·  ")}</span></div>
+          <div className="btn-row">{labs.map(l => (l.enabled || preview) ? <a key={l.id} className="lnk lab" href={"#/lab/" + l.id}>▶ {l.id}</a> : <span key={l.id} className="locked-pill">🔒 {l.id}</span>)}</div></div>}
+        <div className="pager">{prev ? <a href={"#/s/" + prev.id}><small>← PREVIOUS</small>{prev.id} · {prev.title}</a> : <span />}{next ? <a href={"#/s/" + next.id} style={{ textAlign: "right" }}><small>NEXT →</small>{next.id} · {next.title}</a> : <span />}</div>
+      </div>
+      <aside className="rail"><UnitRail data={data} unit={s.unit} cur={s.id} preview={preview} /><LabRail data={data} ids={s.labs} preview={preview} title="Labs for this session" /><Toc heads={heads[tab]} /></aside>
+    </div>}
   </div>;
 }
 
@@ -198,9 +227,11 @@ function LabView({ data, id, preview }) {
   const toggle = k => setDone(done.includes(k) ? done.filter(x => x !== k) : [...done, k]);
   return <div className="page">
     <div className="ph"><div><div className="crumb"><a href="#/">CE633</a> / <a href="#/labs">Lab track</a> / {l.id}</div><h1>{l.title}</h1><div className="hook">{l.goal}</div>
-      <div className="sess-meta">{l.software.map(x => <Chip key={x} s={x} />)}<span className="chip other">≈ {l.minutes} min</span>{l.sessions.map(s => <a key={s} className="lnk theory" href={"#/s/" + s}>Theory {s}</a>)}{!l.enabled && <span className="chip other">locked · instructor preview</span>}</div></div>
+      <div className="sess-meta">{l.software.map(x => <Chip key={x} s={x} />)}<span className="chip other">≈ {l.minutes} min</span>{l.sessions.map(s => <a key={s} className="lnk theory" href={"#/s/" + s}>Theory {s}</a>)}{!l.enabled && <span className="chip other">locked · instructor preview</span>}</div>
+      <div className="topnav">{prev && <a href={"#/lab/" + prev.id}>← {prev.id}</a>}<a href="#/labs">All labs</a>{next && <a href={"#/lab/" + next.id}>{next.id} →</a>}</div></div>
       <div className="ph-tag">{l.id}</div></div>
     {!l.enabled && !preview ? <div className="locked-box"><p style={{ fontSize: 26 }}>🔒</p><p>This lab has not been released yet.</p></div> : !src ? <p>Loading…</p> : <>
+      <div className="with-rail"><div>
       <Content md={intro} />
       {steps.length > 0 && <div className="lab-wrap">
         <div className="steplist"><div className="pg">{done.length} / {steps.length} steps done<div className="bar"><i style={{ width: 100 * done.length / steps.length + "%" }} /></div></div>
@@ -211,14 +242,17 @@ function LabView({ data, id, preview }) {
       </div>}
       <div id="lab-outro"><Content md={outro} /></div>
       <div className="pager">{prev ? <a href={"#/lab/" + prev.id}><small>← PREVIOUS LAB</small>{prev.id} · {prev.title}</a> : <span />}{next ? <a href={"#/lab/" + next.id} style={{ textAlign: "right" }}><small>NEXT LAB →</small>{next.id} · {next.title}</a> : <span />}</div>
+      </div><aside className="rail"><LabRail data={data} cur={l.id} preview={preview} title="All labs" /><SoftRail data={data} /></aside></div>
     </>}
   </div>;
 }
 
-function PageView({ data, id }) {
-  const p = data.pages.find(x => x.id === id); const src = useText(p && p.file);
+function PageView({ data, id, list, kind }) {
+  const p = list.find(x => x.id === id); const src = useText(p && p.file); const [heads, setHeads] = useState([]);
   if (!p) return <div className="page">Page not found.</div>;
-  return <div className="page"><div className="ph"><div><h1>{p.title}</h1><div className="hook">{p.hook}</div></div><div className="ph-tag">{data.course.code}</div></div>{src ? <Content md={src} /> : "Loading…"}</div>;
+  return <div className="page"><div className="ph"><div><div className="crumb"><a href="#/">CE633</a> / {kind === "sw" ? <a href="#/labs">Software</a> : "Course"} / {p.title}</div><h1>{p.title}</h1><div className="hook">{p.hook}</div></div><div className="ph-tag">{kind === "sw" ? "SOFTWARE" : data.course.code}</div></div>
+    <div className="with-rail"><div>{src ? <Content md={src} onHeads={setHeads} /> : "Loading…"}</div>
+      <aside className="rail">{kind === "sw" ? <><SoftRail data={data} cur={id} /><LabRail data={data} title="Lab track" /></> : <div className="rail-box"><h5>Course pages</h5><div className="pad">{data.pages.map(q => <a key={q.id} href={"#/page/" + q.id} className={q.id === id ? "cur" : ""}><span className="d">{q.ni}</span>{q.title}</a>)}</div></div>}<Toc heads={heads} /></aside></div></div>;
 }
 
 /* ---------- App ---------- */
@@ -235,11 +269,12 @@ function App() {
     case "s": view = <SessionView data={data} id={route[1]} preview={preview} />; break;
     case "labs": view = <LabsPage data={data} preview={preview} />; break;
     case "lab": view = <LabView data={data} id={route[1]} preview={preview} />; break;
-    case "page": view = <PageView data={data} id={route[1]} />; break;
+    case "page": view = <PageView data={data} id={route[1]} list={data.pages} kind="page" />; break;
+    case "sw": view = <PageView key={"sw" + route[1]} data={data} id={route[1]} list={data.software} kind="sw" />; break;
     default: view = <Home data={data} />;
   }
   return <div className="shell">
-    <Sidebar data={data} route={route} open={menu} close={() => setMenu(false)} />
+    <Sidebar data={data} route={route} open={menu} close={() => setMenu(false)} preview={preview} />
     <main className="main"><div className="mobile-bar"><button onClick={() => setMenu(true)}>☰ Menu</button><b>{data.course.code}</b></div>{view}</main>
   </div>;
 }

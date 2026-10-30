@@ -185,6 +185,13 @@ pages = [
  dict(id="setup", ni="⚙", title="Software setup", hook="Install HEC-HMS and QGIS before the first lab.", file="pages/setup.md"),
  dict(id="pbl", ni="P", title="Project (PBL)", hook="One real catchment, four milestones, one driving question.", file="pages/pbl.md"),
  dict(id="assessment", ni="A", title="Assessment", hook="CIA components, AI-use log, data citation.", file="pages/assessment.md"),
+ dict(id="references", ni="R", title="References", hook="Textbooks, software manuals, standards and data sources used in this portal.", file="pages/references.md"),
+]
+software = [
+ dict(id="hms", ni="H", title="About HEC-HMS", when="FROM SESSION 2 · LABS L01–L08", hook="The rainfall–runoff model at the centre of the course: what it is, how a model is organised, what happens in a subbasin.", color="#2d6a4f", file="software/hms.md"),
+ dict(id="qgis", ni="Q", title="About QGIS", when="SESSIONS 5, 9 · LABS L09–L10", hook="The GIS for gauges, polygons, DEMs and maps: vector vs raster, coordinate systems, the tools we use.", color="#5a3e8c", file="software/qgis.md"),
+ dict(id="ras", ni="R", title="About HEC-RAS", when="UNIT IV", hook="River hydraulics: water levels, velocities and flood extents from discharge.", color="#8a4b12", file="software/ras.md"),
+ dict(id="ssp", ni="S", title="About HEC-SSP", when="SESSION 35", hook="Flood-frequency analysis (Bulletin 17C, log-Pearson III) with confidence limits.", color="#1a5f7a", file="software/ssp.md"),
 ]
 links = [
  ["HEC-HMS download","https://www.hec.usace.army.mil/software/hec-hms/downloads.aspx","#57cc99"],
@@ -197,5 +204,5 @@ links = [
  ["GitHub repo","https://github.com/PradhanArpan/hydrology","#57cc99"],
  ["Google Classroom","https://classroom.google.com","#4cc9f0"],
 ]
-json.dump(dict(course=course, units=units, pages=pages, links=links, labs=labs, sessions=S), open(OUT,"w"), indent=1, ensure_ascii=False)
+json.dump(dict(course=course, units=units, pages=pages, software=software, links=links, labs=labs, sessions=S), open(OUT,"w"), indent=1, ensure_ascii=False)
 print(len(S), len(labs))

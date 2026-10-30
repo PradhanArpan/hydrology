@@ -32,10 +32,21 @@ function quizHtml(json) {
   return h + '<p class="qscore" aria-live="polite"></p></div>';
 }
 
+function checkHtml(json) {
+  let items;
+  try { items = JSON.parse(json); } catch (e) { return '<div class="callout warn">Check JSON error: ' + esc(e.message) + "</div>"; }
+  if (!Array.isArray(items)) items = [items];
+  return items.map(it => '<div class="chk" data-a="' + it.answer + '" data-tol="' + (it.tol == null ? 0.02 : it.tol) + '">' +
+    '<div class="cq">✎ ' + inline(it.q) + '</div><div class="row"><input type="text" inputmode="decimal" placeholder="your answer"> <span>' + esc(it.unit || "") + '</span> ' +
+    '<button class="btn">Check</button>' + (it.hint ? ' <button class="btn ghost" data-k="hint">Hint</button>' : "") + (it.solution ? ' <button class="btn ghost" data-k="solx">Show working</button>' : "") + '</div>' +
+    '<div class="fb" hidden></div>' + (it.hint ? '<div class="hint" hidden>' + inline(it.hint) + '</div>' : "") + (it.solution ? '<div class="solx" hidden>' + inline(it.solution) + '</div>' : "") + '</div>').join("");
+}
+
 export function renderMd(src) {
   const store = {};
   const put = html => { const k = key(); store[k] = html; return "\n\n" + k + "\n\n"; };
   src = src.replace(/```quiz\s*\n([\s\S]*?)\n```/g, (m, j) => put(quizHtml(j)));
+  src = src.replace(/```check\s*\n([\s\S]*?)\n```/g, (m, j) => put(checkHtml(j)));
   src = src.replace(/```[\s\S]*?```/g, m => put(marked.parse(m)));
   src = src.replace(/^::widget\[([\w-]+)\]\s*$/gm, (m, w) => put('<div class="wg-mount" data-w="' + w + '"></div>'));
   src = src.replace(/^:::(\w+)[ \t]*(.*)\n([\s\S]*?)\n:::[ \t]*$/gm, (m, type, title, body) => {
@@ -90,6 +101,20 @@ export function enhance(root) {
   });
   root.querySelectorAll("td").forEach(td => { if (/^\s*[-−+]?[\d,]*\.?\d+(\s*%)?\s*$/.test(td.textContent)) td.classList.add("num"); });
   root.querySelectorAll('a[href^="http"]').forEach(a => { a.target = "_blank"; a.rel = "noopener"; });
+  root.querySelectorAll(".chk").forEach(c => {
+    const inp = c.querySelector("input"), fb = c.querySelector(".fb"), a = +c.dataset.a, tol = +c.dataset.tol;
+    const test = () => {
+      const v = parseFloat(String(inp.value).replace(/,/g, "").replace("−", "-"));
+      fb.hidden = false;
+      if (!isFinite(v)) { fb.className = "fb no"; fb.textContent = "Enter a number."; return; }
+      const ok = Math.abs(v - a) <= Math.max(Math.abs(a) * tol, 1e-9);
+      fb.className = "fb " + (ok ? "ok" : "no");
+      fb.textContent = ok ? "✓ Correct — " + a + " (within " + Math.round(tol * 100) + " %)." : (Math.abs(v - a) <= Math.abs(a) * 0.15 ? "Close, but not within " + Math.round(tol * 100) + " %. Check rounding and units." : "Not yet. Try again, or open the hint.");
+    };
+    c.querySelector(".btn:not(.ghost)").addEventListener("click", test);
+    inp.addEventListener("keydown", e => { if (e.key === "Enter") test(); });
+    c.querySelectorAll("[data-k]").forEach(b => b.addEventListener("click", () => { const el = c.querySelector("." + b.dataset.k); el.hidden = !el.hidden; }));
+  });
   root.querySelectorAll(".quiz").forEach(q => {
     const score = q.querySelector(".qscore"), items = q.querySelectorAll(".qitem");
     q.addEventListener("change", e => {
