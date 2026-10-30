@@ -926,7 +926,79 @@ function PenCalc() {
   );
 }
 
+
+/* ============ S10: where does the rain go ============ */
+function Abstractions() {
+  const [v, setV] = useState({ P: 40, T: 4, Ci: 1.0, K: 3, E: 0.1, f: 6, Sd: 4 });
+  const set = k => e => setV({ ...v, [k]: +e.target.value });
+  const intc = Math.min(v.P, v.Ci + v.K * v.E * v.T);
+  const net = v.P - intc;
+  const infl = Math.min(net, v.f * v.T);
+  const exc = net - infl;
+  const dep = Math.min(exc, v.Sd);
+  const ro = exc - dep;
+  const parts = [[intc, C.green, "Interception"], [infl, C.brown, "Infiltration"], [dep, C.gold, "Depression"], [ro, C.river, "Runoff"]];
+  let x = 0;
+  const sl = (k, l, min, max, st, u) => <label className="f">{l}: <b>{v[k]} {u}</b><input type="range" min={min} max={max} step={st} value={v[k]} onChange={set(k)} /></label>;
+  return <Box title="Where does a storm's rain go?">
+    <div className="wg-row">
+      <div className="wg-col">
+        {sl("P", "Storm rainfall P", 2, 150, 1, "mm")}
+        {sl("T", "Storm duration t", 1, 24, 1, "h")}
+        {sl("Ci", "Interception storage Sᵢ", 0, 2.5, 0.25, "mm")}
+        {sl("K", "Leaf-area ratio Kᵢ", 0, 8, 0.5, "")}
+        {sl("f", "Infiltration rate f", 0, 30, 0.5, "mm/h")}
+        {sl("Sd", "Depression storage S_d", 0, 15, 0.5, "mm")}
+        <div className="btn-row">
+          <button className="btn ghost" onClick={() => setV({ ...v, Ci: 1.0, K: 3, f: 6, Sd: 4 })}>Forest on loam</button>
+          <button className="btn ghost" onClick={() => setV({ ...v, Ci: 0.25, K: 0.5, f: 1, Sd: 1.5 })}>Paved city</button>
+          <button className="btn ghost" onClick={() => setV({ ...v, Ci: 0.5, K: 1, f: 15, Sd: 5 })}>Grass on sand</button>
+        </div>
+      </div>
+      <div className="wg-col">
+        <svg viewBox="0 0 600 46">{parts.map(([d, c, t]) => { const w = v.P > 0 ? d / v.P * 600 : 0; const el = <g key={t}><rect x={x} y="6" width={w} height="30" fill={c} /><text x={x + 5} y="26" fontSize="12" fill="#fff">{w > 80 ? t : ""}</text></g>; x += w; return el; })}</svg>
+        <div className="kpis">{parts.map(([d, , t]) => <Kpi key={t} v={f1(d) + " mm"} l={t + " (" + (v.P > 0 ? Math.round(d / v.P * 100) : 0) + "%)"} tone={t === "Runoff" ? "good" : ""} />)}</div>
+        <p className="note">Order used: interception first (Horton, Iᵢ = Sᵢ + Kᵢ·E·t with E = {v.E} mm/h), then infiltration at the rate f for the whole storm, then the excess fills depressions; what is left runs off. Real catchments overlap these steps — HEC-HMS keeps the same order: canopy → surface → loss method → transform.</p>
+      </div>
+    </div>
+  </Box>;
+}
+
+/* ============ S10: Dalton's law ============ */
+const esMm = t => 4.584 * Math.exp(17.27 * t / (t + 237.3)); // saturation vapour pressure, mm Hg (Tetens)
+function Dalton() {
+  const [v, setV] = useState({ tw: 25, ta: 30, rh: 50, c: 0.4 });
+  const set = k => e => setV({ ...v, [k]: +e.target.value });
+  const ew = esMm(v.tw), ea = v.rh / 100 * esMm(v.ta), d = ew - ea, E = v.c * d;
+  const ts = Array.from({ length: 41 }, (_, i) => i);
+  return <Box title="Dalton's law: E = C (e_w − e_a)">
+    <div className="wg-row">
+      <div className="wg-col">
+        <label className="f">Water-surface temperature: <b>{v.tw} °C</b><input type="range" min="0" max="40" value={v.tw} onChange={set("tw")} /></label>
+        <label className="f">Air temperature: <b>{v.ta} °C</b><input type="range" min="0" max="45" value={v.ta} onChange={set("ta")} /></label>
+        <label className="f">Relative humidity: <b>{v.rh} %</b><input type="range" min="5" max="100" value={v.rh} onChange={set("rh")} /></label>
+        <label className="f">Coefficient C (wind, site): <b>{v.c} mm/day per mm Hg</b><input type="range" min="0.1" max="1" step="0.02" value={v.c} onChange={set("c")} /></label>
+        <div className="kpis"><Kpi v={f2(ew)} l="e_w (mm Hg)" /><Kpi v={f2(ea)} l="e_a (mm Hg)" /><Kpi v={f2(d)} l="Deficit e_w − e_a" tone={d < 0 ? "bad" : ""} /><Kpi v={f2(E) + " mm/d"} l={d < 0 ? "Condensation" : "Evaporation"} tone={d < 0 ? "bad" : "good"} /></div>
+        {d < 0 && <p className="note" style={{ color: C.warn }}>e_a &gt; e_w: the air holds more vapour than the water surface can — net flux is downwards (dew / condensation), not evaporation.</p>}
+      </div>
+      <div className="wg-col">
+        <Plot w={520} h={300} x={[0, 40]} y={[0, 60]} xLabel="Temperature (°C)" yLabel="Vapour pressure (mm Hg)">{(sx, sy) => <g>
+          <path d={path(ts.map(t => [t, esMm(t)]), sx, sy)} fill="none" stroke={C.river} strokeWidth="2.5" />
+          {v.ta <= 40 && <line x1={sx(v.ta)} x2={sx(v.ta)} y1={sy(Math.min(60, esMm(v.ta)))} y2={sy(ea)} stroke={C.gold} strokeDasharray="4 3" />}
+          {v.tw <= 40 && <circle cx={sx(v.tw)} cy={sy(ew)} r="6" fill={C.river} />}
+          {v.ta <= 40 && <circle cx={sx(v.ta)} cy={sy(ea)} r="6" fill={C.gold} />}
+          {v.tw <= 40 && <text x={sx(v.tw) - 8} y={sy(ew) - 9} fontSize="11" textAnchor="end" fill={C.river}>water e_w</text>}
+          {v.ta <= 40 && <text x={sx(v.ta) + 8} y={sy(ea) + 14} fontSize="11" fill="#8a6d1d">air e_a</text>}
+        </g>}</Plot>
+        <p className="note">The curve is the saturation vapour pressure. The water surface sits <i>on</i> the curve at its own temperature; the air sits below the curve at its own temperature, lowered by its relative humidity (dashed line). The difference in height between the two dots, e_w − e_a, drives evaporation.</p>
+      </div>
+    </div>
+  </Box>;
+}
+
 export const WIDGETS = {
+  abstractions: Abstractions,
+  dalton: Dalton,
   ...ILLOS,
   waterbudget: WaterBudget,
   globalwater: GlobalWater,

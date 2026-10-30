@@ -145,6 +145,6 @@ Fixed after Antigravity's commits:
 - Math in callout/solution titles now renders; L16 `$area` wrapped as code; sidebar rail boxes no longer squashed.
 
 Still open:
-- **S10** is still the draft-outline stub.
+- **S10** now has full notes (abstractions, interception, depression storage, evaporation, Dalton) with two new widgets: `abstractions`, `dalton`.
 - The numbers log above does not match the sessions in several places — trust the session files, not the log.
 - Units 2–3 stay `"enabled": false` until the instructor reviews them (use `?preview=1`).
