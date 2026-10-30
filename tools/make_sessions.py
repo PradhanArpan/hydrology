@@ -167,7 +167,7 @@ for lid,(u,t,g,sw,ss,mins) in LAB_MAP.items():
     for sid in ss:
         next(x for x in S if x["id"]==sid)["labs"].append(lid)
 course = dict(code="CE633", short="Hydrology", title="Hydrology and Water Resources Engineering",
-  instructor="Dr Shibu K. Mani", email="shibuk.mani@christuniversity.in", programme="BTech Civil Engineering", semester="Even semester 2026–27",
+  instructor="Dr Arpan Pradhan", email="arpan.pradhan@christuniversity.in", programme="BTech Civil Engineering", semester="Even semester 2026–27",
   classroom="", department="Department of Civil Engineering, CHRIST (Deemed to be University), Kengeri Campus")
 units = [
  dict(n=1, roman="I", short="Precipitation", title="Introduction to Hydrology and Precipitation", co="CO1", hours=9,
