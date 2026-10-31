@@ -399,3 +399,17 @@ a.fb-row:hover .fb-row__title { color: var(--river); }
 
 .fb-sidenav--labs .fb-sidenav__num { min-width: 2.4em; flex: none; }
 .fb-single > .fb-lede { margin-bottom: calc(-1 * var(--space-4)); }
+
+/* ---------- 10. Workbench "Open larger" window ---------- */
+.fb-workbench__expand { justify-self: start; }
+.fb-modal { position: fixed; inset: 0; z-index: 120; display: grid; place-items: center; padding: var(--space-5); background: rgba(17, 22, 29, 0.55); }
+.fb-modal__dialog { width: min(1280px, 75vw); height: min(900px, 86vh); display: flex; flex-direction: column; background: var(--paper); border-radius: var(--radius-lg); box-shadow: var(--shadow-dialog); overflow: hidden; }
+@media (max-width: 1400px) { .fb-modal__dialog { width: 86vw; } }
+.fb-modal__head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); padding: var(--space-4) var(--space-5); border-bottom: 1px solid var(--rule); background: var(--surface); }
+.fb-modal__title { margin: 0; font: 500 24px/1.25 var(--font-serif); color: var(--ink); }
+.fb-modal__context { margin: 2px 0 0; font: 400 14px/1.4 var(--font-sans); color: var(--text-muted); }
+.fb-modal__body { flex: 1; overflow: auto; padding: var(--space-5); overscroll-behavior: contain; }
+.fb-modal__body .wg { margin: 0; background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius-lg); box-shadow: none; }
+.fb-modal__body .wg-h { display: none; }
+.fb-modal__body .wg-b { padding: var(--space-5); }
+.fb-modal__body .wg svg { max-width: 100%; height: auto; }

@@ -4,7 +4,7 @@ import { createPortal } from "react-dom";
 import { renderMd, enhance, esc } from "./md.js";
 import { WIDGETS } from "./widgets.jsx";
 import { ILLOS } from "./illos.jsx";
-import { Menu, Search, Sun, Moon, X, Check, Printer, Calculator, Lock, FlaskConical, ChevronRight } from "lucide-react";
+import { Menu, Search, Sun, Moon, X, Check, Printer, Lock, FlaskConical, ChevronRight, Maximize2 } from "lucide-react";
 
 const ALL_COMPONENTS = { ...ILLOS, ...WIDGETS };
 
@@ -28,6 +28,9 @@ const DOCK_TOOLS = {
   scscn: "SCS Curve Number calculator",
   pencalc: "Evapotranspiration calculator"
 };
+
+// Tools with enough controls and charts that the 380px rail is cramped: these get "Open larger".
+const EXPANDABLE = new Set(["dmc", "thiessen", "storm", "idf", "missing", "hortonfit", "phiindex", "scscn", "pencalc", "movavg", "d8"]);
 
 const Icon = ({ as: I, size = 18 }) => <I size={size} strokeWidth={2} aria-hidden="true" className="fb-icon" />;
 
@@ -178,6 +181,7 @@ function Content({ md, onHeads, dock, idPrefix = "" }) {
         const slot = document.createElement("div");
         slot.className = "fb-tool";
         slot.dataset.section = section.id;
+        slot.dataset.tool = name;
         slot.dataset.sectionTitle = section.t;
         slot.dataset.tab = String(dock.tab);
         slot.hidden = true;
@@ -597,13 +601,18 @@ function SessionView({ data, id, preview, markVisited, visited }) {
 
   // show only the tool for the section in view (and the current tab)
   const [shownTool, setShownTool] = useState(null);
+  const [shownName, setShownName] = useState(null);
+  const [expanded, setExpanded] = useState(null);
+  useEffect(() => { setExpanded(null); }, [id, tab, wide]);
   useEffect(() => {
-    if (!rail) { setShownTool(null); return; }
+    if (expanded) return;
+    if (!rail) { setShownTool(null); setShownName(null); return; }
     const slots = [...rail.querySelectorAll(".fb-tool")].filter(el => el.dataset.tab === String(tab));
     const topId = "t" + tab + "-top";
     const match = slots.find(el => el.dataset.section === (active || topId));
     rail.querySelectorAll(".fb-tool").forEach(el => (el.hidden = el !== match));
     setShownTool(match ? match.dataset.sectionTitle || "This session" : null);
+    setShownName(match ? match.dataset.tool : null);
   });
 
   if (!s) return <div className="fb-session"><div className="fb-status fb-status--empty"><div><h3>Session not found</h3><p>Open the <a href="#/">Home page</a> to find the next session.</p></div></div></div>;
@@ -699,6 +708,11 @@ function SessionView({ data, id, preview, markVisited, visited }) {
             <h2 className="fb-workbench__title">Workbench</h2>
             <span className="fb-workbench__context">{shownTool}</span>
           </div>
+          {shownName && EXPANDABLE.has(shownName) && (
+            <button className="fb-btn fb-btn--secondary fb-workbench__expand" onClick={() => { const slot = rail && rail.querySelector(".fb-tool:not([hidden])"); if (slot) setExpanded(slot); }}>
+              <Icon as={Maximize2} /> Open larger
+            </button>
+          )}
           <div ref={setRail} />
         </div>
         {!shownTool && !locked && (
@@ -726,9 +740,53 @@ function SessionView({ data, id, preview, markVisited, visited }) {
           </>
         )}
       </aside>
+      {expanded && <ToolModal slot={expanded} home={rail} title={DOCK_TOOLS[expanded.dataset.tool] || "Workbench"} context={expanded.dataset.sectionTitle} onClose={() => setExpanded(null)} />}
     </div>
   );
 }
+
+// A large window for one workbench tool. The tool's own element is moved in and back out,
+// so its inputs and results are kept exactly as the student left them.
+function ToolModal({ slot, home, title, context, onClose }) {
+  const bodyRef = useRef();
+  const closeRef = useRef();
+  useLayoutEffect(() => {
+    const body = bodyRef.current;
+    if (!body) return;
+    body.appendChild(slot);
+    slot.hidden = false;
+    const prevFocus = document.activeElement;
+    const prevOverflow = document.documentElement.style.overflow;
+    document.documentElement.style.overflow = "hidden";
+    closeRef.current && closeRef.current.focus();
+    return () => {
+      if (home) home.appendChild(slot);
+      document.documentElement.style.overflow = prevOverflow;
+      if (prevFocus && prevFocus.focus) prevFocus.focus();
+    };
+  }, [slot]);
+  useEffect(() => {
+    const onKey = e => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  return createPortal(
+    <div className="fb-modal" onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="fb-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="fb-modal-title">
+        <div className="fb-modal__head">
+          <div>
+            <h2 className="fb-modal__title" id="fb-modal-title">{title}</h2>
+            {context && <p className="fb-modal__context">{context}</p>}
+          </div>
+          <button ref={closeRef} className="fb-btn fb-btn--secondary" onClick={onClose}><Icon as={X} /> Back to reading</button>
+        </div>
+        <div className="fb-modal__body" ref={bodyRef} />
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 /* ---------- Shared bits for the redesigned pages ---------- */
 const listJoin = xs => (xs.length < 2 ? xs.join("") : xs.slice(0, -1).join(", ") + " and " + xs[xs.length - 1]);
 const sentence = t => {
