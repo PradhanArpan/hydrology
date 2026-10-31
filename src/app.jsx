@@ -4,8 +4,46 @@ import { createPortal } from "react-dom";
 import { renderMd, enhance, esc } from "./md.js";
 import { WIDGETS } from "./widgets.jsx";
 import { ILLOS } from "./illos.jsx";
+import { Menu, Search, Sun, Moon, X, Check, Printer, Calculator, Lock, FlaskConical, ChevronRight } from "lucide-react";
 
 const ALL_COMPONENTS = { ...ILLOS, ...WIDGETS };
+
+// Interactive tools that dock in the session workbench (the rest stay inline as figures).
+const DOCK_TOOLS = {
+  waterbudget: "Water-budget calculator",
+  abstractions: "Where does a storm's rain go?",
+  dalton: "Dalton's law",
+  tipping: "Tipping-bucket rain gauge",
+  network: "Optimum number of rain gauges",
+  dmc: "Double mass curve",
+  thiessen: "Thiessen polygons",
+  missing: "Missing rainfall",
+  storm: "Hyetograph and mass curve",
+  movavg: "Moving average",
+  risk: "Return period, risk and reliability",
+  idf: "Plotting position and IDF curves",
+  d8: "D8 flow direction",
+  hortonfit: "Horton's infiltration model",
+  phiindex: "φ-index and W-index finder",
+  scscn: "SCS Curve Number calculator",
+  pencalc: "Evapotranspiration calculator"
+};
+
+const Icon = ({ as: I, size = 18 }) => <I size={size} strokeWidth={2} aria-hidden="true" className="fb-icon" />;
+
+function useMedia(q) {
+  const get = () => { try { return window.matchMedia(q).matches; } catch (e) { return false; } };
+  const [m, setM] = useState(get);
+  useEffect(() => {
+    let mq;
+    try { mq = window.matchMedia(q); } catch (e) { return; }
+    const f = () => setM(mq.matches);
+    f();
+    mq.addEventListener ? mq.addEventListener("change", f) : mq.addListener(f);
+    return () => (mq.removeEventListener ? mq.removeEventListener("change", f) : mq.removeListener(f));
+  }, [q]);
+  return m;
+}
 
 const REPO = "https://github.com/PradhanArpan/hydrology";
 const UB = ["", "u1b", "u2b", "u3b", "u4b", "u5b"];
@@ -116,22 +154,44 @@ function useProgress() {
 }
 
 /* ---------- Markdown block with live React widgets ---------- */
-function Content({ md, onHeads }) {
+// dock: { rail: HTMLElement, tab: number } — when given, interactive tools render into the
+// workbench rail (one slot per tool, tagged with its section) and leave a short note inline.
+function Content({ md, onHeads, dock, idPrefix = "" }) {
   const ref = useRef();
   const [mounts, setMounts] = useState([]);
   const html = useMemo(() => renderMd(md), [md]);
+  const rail = dock && dock.rail;
 
   useLayoutEffect(() => {
     if (!ref.current) return;
     ref.current.innerHTML = html;
     enhance(ref.current);
     const hs = [...ref.current.querySelectorAll("h2, h3")].map((h, k) => {
-      h.id = h.id || "h" + k + "-" + h.textContent.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 30);
+      h.id = h.id || idPrefix + "h" + k + "-" + h.textContent.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 30);
       return { id: h.id, t: h.textContent, lv: h.tagName };
     });
     if (onHeads) onHeads(hs);
-    setMounts([...ref.current.querySelectorAll(".wg-mount")].map(el => ({ el, name: el.dataset.w })));
-  }, [html]);
+    // walk headings and mounts in document order so each tool knows its section
+    let section = { id: idPrefix + "top", t: "" };
+    const list = [];
+    ref.current.querySelectorAll("h2, .wg-mount").forEach(el => {
+      if (el.tagName === "H2") { section = { id: el.id, t: el.textContent }; return; }
+      const name = el.dataset.w;
+      if (rail && DOCK_TOOLS[name]) {
+        const slot = document.createElement("div");
+        slot.className = "fb-tool";
+        slot.dataset.section = section.id;
+        slot.dataset.sectionTitle = section.t;
+        slot.dataset.tab = String(dock.tab);
+        slot.hidden = true;
+        rail.appendChild(slot);
+        el.innerHTML = '<div class="fb-docked-note"><b>' + esc(DOCK_TOOLS[name]) + "</b>&nbsp;is open in the workbench beside this section.</div>";
+        list.push({ el: slot, name });
+      } else list.push({ el, name });
+    });
+    setMounts(list);
+    return () => list.forEach(m => { if (m.el.classList.contains("fb-tool")) m.el.remove(); });
+  }, [html, rail]);
 
   return (
     <>
@@ -349,7 +409,7 @@ function SearchModal({ data, open, onClose, preview }) {
     <div className="search-modal-backdrop" onClick={onClose}>
       <div className="search-modal" onClick={e => e.stopPropagation()}>
         <div className="search-header">
-          <span style={{ fontSize: 16 }}>🔍</span>
+          <Icon as={Search} />
           <input
             ref={inputRef}
             type="text"
@@ -358,7 +418,7 @@ function SearchModal({ data, open, onClose, preview }) {
             value={query}
             onChange={e => setQuery(e.target.value)}
           />
-          <button className="search-close-btn" onClick={onClose} aria-label="Close search">✕</button>
+          <button className="search-close-btn" onClick={onClose} aria-label="Close search"><Icon as={X} /></button>
         </div>
         <div className="search-results">
           {query.trim() === "" ? (
@@ -396,120 +456,358 @@ function SearchModal({ data, open, onClose, preview }) {
   );
 }
 
-/* ---------- Sidebar ---------- */
-function Sidebar({ data, route, open, close, preview, theme, toggleTheme, onOpenSearch, visited }) {
+/* ---------- Shell: header, menu drawer, preview bar ---------- */
+function SiteHeader({ data, onMenu, onSearch, theme, toggleTheme }) {
   const c = data.course;
-  const Nav = ({ to, ni, children, active }) => (
-    <a className={"nav-btn" + (active ? " active" : "")} href={"#/" + to} onClick={close}>
-      <span className="ni">{ni}</span>
-      {children}
-    </a>
-  );
-  const sess = route[0] === "s" ? data.sessions.find(s => s.id === route[1]) : null;
-  const lab = route[0] === "lab" ? data.labs.find(l => l.id === route[1]) : null;
-  const unitActive = n => (route[0] === "unit" && +route[1] === n) || (sess && sess.unit === n);
-
   return (
-    <aside className={"sb" + (open ? " open" : "")}>
-      <div className="sb-brand" onClick={() => { go("/"); close(); }}>
-        <div className="sb-dept">Christ University · Civil Engg</div>
-        <div className="sb-code">{c.code}</div>
-        <div className="sb-title">{c.title}</div>
-        <div className="sb-tag">COURSE DELIVERY HUB</div>
-      </div>
-
-      <div className="sb-search-trigger" onClick={onOpenSearch}>
-        <span>🔍 Search topics…</span>
-        <span className="sb-kbd">/</span>
-      </div>
-
-      <div className="nav-lbl">Theory · Units</div>
-      <Nav to="" ni="⌂" active={route[0] === "home"}>Home</Nav>
-      {data.units.map(u => (
-        <React.Fragment key={u.n}>
-          <Nav to={"unit/" + u.n} ni={"U" + u.n} active={unitActive(u.n)}>
-            Unit {u.n} — {u.short}
-          </Nav>
-          {unitActive(u.n) && (
-            <div className="sub-nav">
-              {data.sessions
-                .filter(s => s.unit === u.n && (s.enabled || preview))
-                .map(s => {
-                  const isVis = visited && visited.includes(s.id);
-                  return (
-                    <a
-                      key={s.id}
-                      href={"#/s/" + s.id}
-                      onClick={close}
-                      className={sess && sess.id === s.id ? "cur" : ""}
-                    >
-                      <span className="d">{s.day}</span>
-                      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {s.title}
-                      </span>
-                      {isVis && <span className="vis-dot" title="Visited" />}
-                    </a>
-                  );
-                })}
-            </div>
-          )}
-        </React.Fragment>
-      ))}
-
-      <div className="nav-lbl">Software · Lab track</div>
-      <Nav to="labs" ni="L" active={route[0] === "labs" || !!lab}>Lab track (step by step)</Nav>
-      {(route[0] === "labs" || lab) && (
-        <div className="sub-nav">
-          {data.labs.filter(l => l.enabled || preview).map(l => (
-            <a key={l.id} href={"#/lab/" + l.id} onClick={close} className={lab && lab.id === l.id ? "cur" : ""}>
-              <span className="d">{l.id}</span>
-              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.title}</span>
-            </a>
-          ))}
-        </div>
-      )}
-      {data.software.map(p => (
-        <Nav key={p.id} to={"sw/" + p.id} ni={p.ni} active={route[0] === "sw" && route[1] === p.id}>
-          {p.title}
-        </Nav>
-      ))}
-
-      <div className="nav-lbl">Course</div>
-      {data.pages.map(p => (
-        <Nav key={p.id} to={"page/" + p.id} ni={p.ni} active={route[0] === "page" && route[1] === p.id}>
-          {p.title}
-        </Nav>
-      ))}
-
-      <div className="sb-links">
-        <div className="sb-links-lbl">Quick links</div>
-        {data.links.map(([t, u, col]) => (
-          <a key={t} className="sb-link" href={u} target="_blank" rel="noopener">
-            <span className="sb-dot" style={{ background: col }} />
-            {t}
-          </a>
-        ))}
-        <a className="sb-link" href={REPO + "/edit/main/sessions.json"} target="_blank" rel="noopener">
-          <span className="sb-dot" style={{ background: "var(--gold)" }} />
-          ⚙ Enable sessions
-        </a>
-      </div>
-
-      <div className="sb-footer">
-        <div>{c.instructor}</div>
-        <div>{c.email}</div>
-        <div>{c.semester}</div>
-        <div className="sb-theme-row">
-          <span>Theme:</span>
-          <button className="theme-btn" onClick={toggleTheme}>
-            {theme === "dark" ? "☀️ Light mode" : "🌙 Dark mode"}
-          </button>
-        </div>
-      </div>
-    </aside>
+    <header className="fb-header">
+      <button className="fb-header__menu" onClick={onMenu} aria-label="Open course menu">
+        <Icon as={Menu} /> <span>Menu</span>
+      </button>
+      <a className="fb-header__brand" href="#/">
+        <span className="fb-header__code">{c.code}</span>
+        <span className="fb-header__name">{c.title}</span>
+      </a>
+      <button className="fb-header__search" onClick={onSearch} aria-label="Search the course">
+        <Icon as={Search} />
+        <span>Search sessions, labs, formulas</span>
+        <kbd>/</kbd>
+      </button>
+      <button className="fb-iconbtn fb-header__searchicon" onClick={onSearch} aria-label="Search the course">
+        <Icon as={Search} size={20} />
+      </button>
+      <button className="fb-iconbtn" onClick={toggleTheme} aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}>
+        <Icon as={theme === "dark" ? Sun : Moon} size={20} />
+      </button>
+    </header>
   );
 }
 
+function MenuDrawer({ data, route, open, close, preview, visited }) {
+  const closeRef = useRef();
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.activeElement;
+    setTimeout(() => closeRef.current && closeRef.current.focus(), 0);
+    const onKey = e => { if (e.key === "Escape") close(); };
+    window.addEventListener("keydown", onKey);
+    return () => { window.removeEventListener("keydown", onKey); if (prev && prev.focus) prev.focus(); };
+  }, [open]);
+  if (!open) return null;
+  const c = data.course;
+  const sess = route[0] === "s" ? data.sessions.find(s => s.id === route[1]) : null;
+  const curUnit = sess ? sess.unit : route[0] === "unit" ? +route[1] : null;
+  const cur = (cond) => (cond ? { "aria-current": "page" } : {});
+  return (
+    <>
+      <div className="fb-scrim" onClick={close} />
+      <nav className="fb-drawer" aria-label="Course menu">
+        <div className="fb-drawer__head">
+          <span className="fb-drawer__title">{c.code} Hydrology</span>
+          <button ref={closeRef} className="fb-iconbtn" onClick={close} aria-label="Close menu"><Icon as={X} size={20} /></button>
+        </div>
+        <div className="fb-drawer__body" onClick={e => { if (e.target.closest("a")) close(); }}>
+          <div className="fb-drawer__group">
+            <a className="fb-drawer__link" href="#/" {...cur(route[0] === "home")}>Home</a>
+          </div>
+          <div className="fb-drawer__group">
+            <p className="fb-drawer__label">Units</p>
+            {data.units.map(u => (
+              <React.Fragment key={u.n}>
+                <a className="fb-drawer__link" href={"#/unit/" + u.n} {...cur(route[0] === "unit" && +route[1] === u.n)}>
+                  <span className="fb-drawer__num">{ROMAN[u.n]}</span>{u.short}
+                </a>
+                {curUnit === u.n && (
+                  <div className="fb-drawer__sub">
+                    {data.sessions.filter(s => s.unit === u.n && (s.enabled || preview)).map(s => (
+                      <a key={s.id} className="fb-drawer__link" href={"#/s/" + s.id} {...cur(sess && sess.id === s.id)}>
+                        <span className="fb-drawer__num">{s.day}</span>
+                        <span style={{ flex: 1 }}>{s.title}</span>
+                        {visited && visited.includes(s.id) && <span className="fb-sidenav__read"><Icon as={Check} size={16} /><span className="fb-sr">Read</span></span>}
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </React.Fragment>
+            ))}
+          </div>
+          <div className="fb-drawer__group">
+            <p className="fb-drawer__label">Software</p>
+            <a className="fb-drawer__link" href="#/labs" {...cur(route[0] === "labs" || route[0] === "lab")}>Lab track</a>
+            {data.software.map(p => (
+              <a key={p.id} className="fb-drawer__link" href={"#/sw/" + p.id} {...cur(route[0] === "sw" && route[1] === p.id)}>{p.title}</a>
+            ))}
+          </div>
+          <div className="fb-drawer__group">
+            <p className="fb-drawer__label">Course</p>
+            {data.pages.map(p => (
+              <a key={p.id} className="fb-drawer__link" href={"#/page/" + p.id} {...cur(route[0] === "page" && route[1] === p.id)}>{p.title}</a>
+            ))}
+          </div>
+          <div className="fb-drawer__group">
+            <p className="fb-drawer__label">Data and software links</p>
+            {data.links.map(([t, u]) => (
+              <a key={t} className="fb-drawer__link" href={u} target="_blank" rel="noopener">{t}</a>
+            ))}
+          </div>
+        </div>
+        <div className="fb-drawer__foot">
+          <div>{c.instructor}</div>
+          <div>{c.email}</div>
+        </div>
+      </nav>
+    </>
+  );
+}
+
+function PreviewBar() {
+  return (
+    <div className="fb-previewbar" role="status">
+      <span><b>Preview mode.</b> You can see unreleased sessions and labs; students can't.</span>
+      <a href={REPO + "/edit/main/sessions.json"} target="_blank" rel="noopener">Release sessions in sessions.json</a>
+    </div>
+  );
+}
+
+function SideNav({ data, unit, cur, preview, visited }) {
+  const u = data.units.find(x => x.n === unit);
+  const ss = data.sessions.filter(s => s.unit === unit);
+  return (
+    <nav className="fb-sidenav" aria-label={"Unit " + ROMAN[unit] + " sessions"}>
+      <p className="fb-sidenav__unit"><a href={"#/unit/" + unit}>Unit {ROMAN[unit]}  {u ? u.short : ""}</a></p>
+      <ol>
+        {ss.map((s, k) => {
+          const open = s.enabled || preview;
+          const read = visited && visited.includes(s.id);
+          return (
+            <li key={s.id}>
+              {open ? (
+                <a className="fb-sidenav__item" href={"#/s/" + s.id} aria-current={s.id === cur ? "page" : undefined}>
+                  <span className="fb-sidenav__num">{k + 1}</span>
+                  <span>{s.title}</span>
+                  {read && <span className="fb-sidenav__read"><Icon as={Check} size={16} /><span className="fb-sr">Read</span></span>}
+                </a>
+              ) : (
+                <span className="fb-sidenav__locked"><span className="fb-sidenav__num">{k + 1}</span><span>{s.title}</span></span>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+    </nav>
+  );
+}
+
+/* ---------- Session page: reading column + docked workbench ---------- */
+function SessionTabs({ parts, tab, pick }) {
+  const refs = useRef([]);
+  const onKey = (e, j) => {
+    const n = parts.length;
+    let k = null;
+    if (e.key === "ArrowRight") k = (j + 1) % n;
+    if (e.key === "ArrowLeft") k = (j - 1 + n) % n;
+    if (e.key === "Home") k = 0;
+    if (e.key === "End") k = n - 1;
+    if (k === null) return;
+    e.preventDefault();
+    pick(k);
+    refs.current[k] && refs.current[k].focus();
+  };
+  return (
+    <div className="fb-tabs" role="tablist" aria-label="Session parts">
+      {parts.map((p, j) => (
+        <button
+          key={p.name}
+          ref={el => (refs.current[j] = el)}
+          role="tab"
+          id={"tab-" + j}
+          aria-selected={j === tab}
+          aria-controls={"panel-" + j}
+          tabIndex={j === tab ? 0 : -1}
+          onClick={() => pick(j)}
+          onKeyDown={e => onKey(e, j)}
+        >
+          {p.name}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function useActiveSection(rootSel, deps) {
+  const [active, setActive] = useState(null);
+  useEffect(() => {
+    let raf = 0;
+    const calc = () => {
+      raf = 0;
+      const root = document.querySelector(rootSel);
+      if (!root) return;
+      const line = window.innerHeight * 0.35;
+      let id = null;
+      root.querySelectorAll(".prose h2").forEach(h => { if (h.offsetParent !== null && h.getBoundingClientRect().top <= line) id = h.id; });
+      setActive(id);
+    };
+    const onScroll = () => { if (!raf) raf = requestAnimationFrame(calc); };
+    calc();
+    const t = setTimeout(calc, 300);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => { clearTimeout(t); if (raf) cancelAnimationFrame(raf); window.removeEventListener("scroll", onScroll); window.removeEventListener("resize", onScroll); };
+  }, deps);
+  return active;
+}
+
+function SessionView({ data, id, preview, markVisited, visited }) {
+  const s = data.sessions.find(x => x.id === id);
+  const src = useText(s && (s.enabled || preview) ? s.file : null);
+  const [tab, setTab] = useState(0);
+  const [heads, setHeads] = useState({});
+  const wide = useMedia("(min-width: 1180px)");
+  const [rail, setRail] = useState(null);
+  const [toolTick, setToolTick] = useState(0);
+
+  useEffect(() => {
+    setTab(0);
+    setHeads({});
+    if (s && markVisited) markVisited(s.id);
+  }, [id]);
+
+  const active = useActiveSection(".fb-article", [id, tab, src, toolTick]);
+
+  // show only the tool for the section in view (and the current tab)
+  const [shownTool, setShownTool] = useState(null);
+  useEffect(() => {
+    if (!rail) { setShownTool(null); return; }
+    const slots = [...rail.querySelectorAll(".fb-tool")].filter(el => el.dataset.tab === String(tab));
+    const topId = "t" + tab + "-top";
+    const match = slots.find(el => el.dataset.section === (active || topId));
+    rail.querySelectorAll(".fb-tool").forEach(el => (el.hidden = el !== match));
+    setShownTool(match ? match.dataset.sectionTitle || "This session" : null);
+  });
+
+  if (!s) return <div className="fb-session"><div className="fb-status fb-status--empty"><div><h3>Session not found</h3><p>Open the <a href="#/">Home page</a> to find the next session.</p></div></div></div>;
+
+  const u = data.units.find(x => x.n === s.unit);
+  const unitSessions = data.sessions.filter(x => x.unit === s.unit);
+  const pos = unitSessions.findIndex(x => x.id === id) + 1;
+  const labs = (s.labs || []).map(l => data.labs.find(x => x.id === l)).filter(Boolean);
+  const openLabs = labs.filter(l => l.enabled || preview);
+  const vis = data.sessions.filter(x => x.enabled || preview);
+  const i = vis.findIndex(x => x.id === id);
+  const prev = vis[i - 1];
+  const next = vis[i + 1];
+  const parts = src ? splitTabs(src) : [];
+  const locked = !s.enabled && !preview;
+  const curHeads = (heads[tab] || []).filter(h => h.lv === "H2");
+
+  const pick = j => {
+    setTab(j);
+    window.scrollTo(0, 0);
+  };
+
+  const meta = [s.co, s.refs ? "textbook " + s.refs : null, (s.software || []).length ? (s.software || []).join(" and ") : null].filter(Boolean).join(", ");
+
+  return (
+    <div className={"fb-session fb-session--rail"}>
+      <aside className="fb-session__nav">
+        <SideNav data={data} unit={s.unit} cur={s.id} preview={preview} visited={visited} />
+      </aside>
+
+      <article className="fb-article">
+        <p className="fb-crumb">
+          <a href={"#/unit/" + u.n}>Unit {ROMAN[u.n]}</a> / Session {pos} of {unitSessions.length} / Day {s.day}
+          {!s.enabled && preview && <> / <b>Unreleased</b></>}
+        </p>
+        <h1 className="fb-title">{s.title}</h1>
+        {s.hook && <p className="fb-lede">{s.hook}</p>}
+        {meta && <p className="fb-meta">{meta}</p>}
+
+        {!locked && (
+          <div className="fb-actions">
+            {openLabs.map((l, k) => (
+              <a key={l.id} className={"fb-btn " + (k === 0 ? "fb-btn--primary" : "fb-btn--secondary")} href={"#/lab/" + l.id}>
+                <Icon as={FlaskConical} /> Lab {l.id}: {l.title}
+              </a>
+            ))}
+            <button className="fb-btn fb-btn--ghost" onClick={() => window.print()}>
+              <Icon as={Printer} /> Print notes
+            </button>
+          </div>
+        )}
+
+        {locked ? (
+          <div className="fb-status fb-status--empty">
+            <Icon as={Lock} size={20} />
+            <div>
+              <h3>This session opens closer to Day {s.day}</h3>
+              <p>Revise the sessions already open in <a href={"#/unit/" + u.n}>Unit {ROMAN[u.n]}</a> in the meantime.</p>
+            </div>
+          </div>
+        ) : !src ? (
+          <div className="fb-skeleton" aria-busy="true" aria-label="Loading session">
+            <span style={{ width: "60%", height: 24 }} /><span /><span /><span style={{ width: "85%" }} /><span /><span style={{ width: "70%" }} />
+          </div>
+        ) : (
+          <>
+            {parts.length > 1 && <SessionTabs parts={parts} tab={tab} pick={pick} />}
+            {parts.map((p, j) => (
+              <div key={id + j} role={parts.length > 1 ? "tabpanel" : undefined} id={"panel-" + j} aria-labelledby={parts.length > 1 ? "tab-" + j : undefined} hidden={j !== tab}>
+                <Content
+                  md={p.md}
+                  idPrefix={"t" + j + "-"}
+                  dock={wide && rail ? { rail, tab: j } : null}
+                  onHeads={h => { setHeads(o => ({ ...o, [j]: h })); setToolTick(x => x + 1); }}
+                />
+              </div>
+            ))}
+            <nav className="fb-pager" aria-label="Sessions">
+              {prev ? (
+                <a href={"#/s/" + prev.id}><small>Previous session</small>{prev.title}</a>
+              ) : <span />}
+              {next ? (
+                <a className="fb-pager__next" href={"#/s/" + next.id}><small>Next session</small>{next.title}</a>
+              ) : <span />}
+            </nav>
+          </>
+        )}
+      </article>
+
+      <aside className="fb-rail" aria-label="Workbench">
+        <div className="fb-workbench" hidden={!shownTool}>
+          <div className="fb-workbench__head">
+            <h2 className="fb-workbench__title">Workbench</h2>
+            <span className="fb-workbench__context">{shownTool}</span>
+          </div>
+          <div ref={setRail} />
+        </div>
+        {!shownTool && !locked && (
+          <>
+            {openLabs.length > 0 && (
+              <section className="fb-panel">
+                <h2>Try it in software</h2>
+                <ul>
+                  {openLabs.map(l => (
+                    <li key={l.id}><a href={"#/lab/" + l.id}><Icon as={FlaskConical} size={16} /> Lab {l.id}: {l.title}</a></li>
+                  ))}
+                </ul>
+              </section>
+            )}
+            {curHeads.length > 0 && (
+              <section className="fb-panel">
+                <h2>On this page</h2>
+                <ul>
+                  {curHeads.map(h => (
+                    <li key={h.id}><a href="#" aria-current={h.id === active ? "true" : undefined} onClick={e => jump(e, h.id)}>{h.t}</a></li>
+                  ))}
+                </ul>
+              </section>
+            )}
+          </>
+        )}
+      </aside>
+    </div>
+  );
+}
 /* ---------- Home ---------- */
 function Home({ data, visited, completedLabs }) {
   const open = data.sessions.filter(s => s.enabled).length;
@@ -825,157 +1123,6 @@ function LabsPage({ data, preview }) {
   );
 }
 
-/* ---------- Session view ---------- */
-function SessionView({ data, id, preview, markVisited, visited }) {
-  const s = data.sessions.find(x => x.id === id);
-  const src = useText(s && (s.enabled || preview) ? s.file : null);
-  const [tab, setTab] = useState(0);
-  const [heads, setHeads] = useState({});
-
-  useEffect(() => {
-    setTab(0);
-    setHeads({});
-    if (s && markVisited) markVisited(s.id);
-  }, [id]);
-
-  if (!s) return <div className="page"><div className="locked-box">Session not found.</div></div>;
-
-  const u = data.units.find(x => x.n === s.unit);
-  const labs = (s.labs || []).map(l => data.labs.find(x => x.id === l)).filter(Boolean);
-  const vis = data.sessions.filter(x => x.enabled || preview);
-  const i = vis.findIndex(x => x.id === id);
-  const prev = vis[i - 1];
-  const next = vis[i + 1];
-  const parts = src ? splitTabs(src) : [];
-
-  const pick = j => {
-    setTab(j);
-    const m = document.querySelector(".main");
-    if (m) m.scrollTo({ top: 0 });
-    window.scrollTo(0, 0);
-  };
-
-  return (
-    <div className="page">
-      <div className="ph">
-        <div>
-          <div className="crumb">
-            <a href="#/">CE633</a> / <a href={"#/unit/" + u.n}>Unit {ROMAN[u.n]}</a> / {s.id} · Day {s.day}
-          </div>
-          <h1>{s.title}</h1>
-          <div className="hook">{s.hook}</div>
-          <div className="sess-meta">
-            <span className={"co-badge " + UB[u.n]}>{s.co}</span>
-            {s.refs && <span className="chip other">Ref: {s.refs}</span>}
-            {(s.software || []).map(x => <Chip key={x} s={x} />)}
-            {!s.enabled && <span className="chip other">locked · instructor preview</span>}
-          </div>
-          <div className="topnav">
-            {prev && (
-              <a href={"#/s/" + prev.id} title={prev.title}>
-                ← {prev.id}: {prev.title.slice(0, 22)}…
-              </a>
-            )}
-            <a href={"#/unit/" + u.n}>Unit {ROMAN[u.n]} list</a>
-            {next && (
-              <a href={"#/s/" + next.id} title={next.title}>
-                {next.id}: {next.title.slice(0, 22)}… →
-              </a>
-            )}
-            {labs
-              .filter(l => l.enabled || preview)
-              .map(l => (
-                <a key={l.id} href={"#/lab/" + l.id} style={{ color: "var(--green)", fontWeight: 600 }}>
-                  Lab {l.id} ▶
-                </a>
-              ))}
-            <button className="ph-action-btn" onClick={() => window.print()} title="Print this lesson / Save PDF">
-              🖨️ Print notes
-            </button>
-          </div>
-        </div>
-        <div className="ph-tag-group">
-          <div className="ph-tag">{s.id}</div>
-        </div>
-      </div>
-
-      {!s.enabled && !preview ? (
-        <div className="locked-box">
-          <p style={{ fontSize: 28, marginBottom: 8 }}>🔒</p>
-          <p style={{ fontWeight: 600 }}>This session has not been released yet.</p>
-          <p style={{ fontSize: 13, color: "var(--g400)", marginTop: 4 }}>
-            Check back closer to Day {s.day}. Instructor preview available with <code>?preview=1</code>.
-          </p>
-        </div>
-      ) : !src ? (
-        <p style={{ padding: "30px 0" }}>Loading lesson content…</p>
-      ) : (
-        <div className="with-rail">
-          <div>
-            {parts.length > 1 && (
-              <div className="tabs">
-                {parts.map((p, j) => (
-                  <button key={p.name} className={j === tab ? "on" : ""} onClick={() => pick(j)}>
-                    <span className="k">{String(j + 1).padStart(2, "0")}</span>
-                    {p.name}
-                  </button>
-                ))}
-              </div>
-            )}
-            {parts.map((p, j) => (
-              <div key={id + j} style={{ display: j === tab ? "" : "none" }}>
-                <Content md={p.md} onHeads={h => setHeads(o => ({ ...o, [j]: h }))} />
-              </div>
-            ))}
-            {labs.length > 0 && (
-              <div className="labbar">
-                <div>
-                  <b>Software lab track</b>
-                  <span>{labs.map(l => l.id + " · " + l.title).join("  ·  ")}</span>
-                </div>
-                <div className="btn-row">
-                  {labs.map(l =>
-                    l.enabled || preview ? (
-                      <a key={l.id} className="lnk lab" href={"#/lab/" + l.id}>
-                        ▶ {l.id}
-                      </a>
-                    ) : (
-                      <span key={l.id} className="locked-pill">🔒 {l.id}</span>
-                    )
-                  )}
-                </div>
-              </div>
-            )}
-            <div className="pager">
-              {prev ? (
-                <a href={"#/s/" + prev.id}>
-                  <small>← PREVIOUS SESSION</small>
-                  {prev.id} · {prev.title}
-                </a>
-              ) : (
-                <span />
-              )}
-              {next ? (
-                <a href={"#/s/" + next.id} style={{ textAlign: "right" }}>
-                  <small>NEXT SESSION →</small>
-                  {next.id} · {next.title}
-                </a>
-              ) : (
-                <span />
-              )}
-            </div>
-          </div>
-          <aside className="rail">
-            <UnitRail data={data} unit={s.unit} cur={s.id} preview={preview} visited={visited} />
-            <LabRail data={data} ids={s.labs} preview={preview} title="Labs for this session" />
-            <Toc heads={heads[tab]} />
-          </aside>
-        </div>
-      )}
-    </div>
-  );
-}
-
 /* ---------- Lab view (stepper) ---------- */
 function parseLab(src) {
   const a = src.indexOf("<!--step:"), z = src.indexOf("<!--end-->");
@@ -1270,6 +1417,7 @@ function App() {
 
   const route = useRoute();
   const preview = isPreview();
+  useEffect(() => { setMenu(false); }, [route.join("/")]);
 
   useEffect(() => {
     fetch("sessions.json", { cache: "no-cache" })
@@ -1279,7 +1427,7 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (data) document.title = data.course.code + " — Course Delivery Hub";
+    if (data) document.title = data.course.code + " " + data.course.title;
   }, [data]);
 
   // Global keyboard shortcut for search ('/' or 'Ctrl+K' / 'Cmd+K')
@@ -1322,32 +1470,14 @@ function App() {
   }
 
   return (
-    <div className="shell">
-      <Sidebar
-        data={data}
-        route={route}
-        open={menu}
-        close={() => setMenu(false)}
-        preview={preview}
-        theme={theme}
-        toggleTheme={toggleTheme}
-        onOpenSearch={() => setSearchOpen(true)}
-        visited={visited}
-      />
-      <main className="main">
-        <div className="mobile-bar">
-          <button onClick={() => setMenu(true)}>☰ Menu</button>
-          <b>{data.course.code}</b>
-          <div style={{ display: "flex", gap: 6 }}>
-            <button onClick={() => setSearchOpen(true)} aria-label="Search">🔍</button>
-            <button onClick={toggleTheme} aria-label="Toggle theme">
-              {theme === "dark" ? "☀️" : "🌙"}
-            </button>
-          </div>
-        </div>
+    <div className="fb-shell">
+      <a className="fb-sr" href="#main-content" onClick={e => { e.preventDefault(); const m = document.getElementById("main-content"); if (m) m.focus(); }}>Skip to content</a>
+      <SiteHeader data={data} onMenu={() => setMenu(true)} onSearch={() => setSearchOpen(true)} theme={theme} toggleTheme={toggleTheme} />
+      {preview && <PreviewBar />}
+      <main className="main" id="main-content" tabIndex={-1}>
         {view}
       </main>
-
+      <MenuDrawer data={data} route={route} open={menu} close={() => setMenu(false)} preview={preview} visited={visited} />
       <SearchModal
         data={data}
         open={searchOpen}

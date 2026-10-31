@@ -73,7 +73,7 @@ export function enhance(root) {
     const p = bq.querySelector("p"); if (!p) return;
     const m = p.innerHTML.match(/^\[!(\w+)\]\s*([^<\n]*)/); if (!m) return;
     const div = document.createElement("div");
-    div.className = "callout " + m[1].toLowerCase();
+    div.className = "callout " + m[1].toLowerCase() + (/^\s*key ideas\s*$/i.test(m[2] || "") ? " keyideas" : "");
     p.innerHTML = p.innerHTML.replace(m[0], "").replace(/^\s*<br>/, "");
     div.innerHTML = '<span class="ct">' + esc(m[2] || m[1]) + "</span>" + bq.innerHTML;
     bq.replaceWith(div);
@@ -116,6 +116,12 @@ export function enhance(root) {
       o.innerHTML = '<img src="' + i.getAttribute("src") + '" alt=""><p>' + esc((i.alt || "").replace(" — ", " · ")) + "</p>";
       o.addEventListener("click", () => o.remove()); document.body.appendChild(o);
     });
+  });
+  // wide tables scroll inside their own box, never the page
+  root.querySelectorAll("table").forEach(t => {
+    if (t.parentElement && t.parentElement.classList.contains("tbl-wrap")) return;
+    const w = document.createElement("div"); w.className = "tbl-wrap";
+    t.replaceWith(w); w.appendChild(t);
   });
   root.querySelectorAll("td").forEach(td => { if (/^\s*[-−+]?[\d,]*\.?\d+(\s*%)?\s*$/.test(td.textContent)) td.classList.add("num"); });
   root.querySelectorAll('a[href^="http"]').forEach(a => { a.target = "_blank"; a.rel = "noopener"; });
