@@ -46,10 +46,7 @@ function useMedia(q) {
 }
 
 const REPO = "https://github.com/PradhanArpan/hydrology";
-const UB = ["", "u1b", "u2b", "u3b", "u4b", "u5b"];
 const ROMAN = ["", "I", "II", "III", "IV", "V"];
-const SOFT = { "HEC-HMS": "hms", "HEC-RAS": "ras", "QGIS": "gis", "Spreadsheet": "sheet" };
-const Chip = ({ s }) => <span className={"chip " + (SOFT[s] || "other")}>{s}</span>;
 
 function store(k, v) {
   try {
@@ -209,77 +206,6 @@ const jump = (e, id) => {
   const el = document.getElementById(id);
   if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
 };
-
-function Toc({ heads }) {
-  if (!heads || !heads.length) return null;
-  return (
-    <div className="rail-box">
-      <h5>On this tab</h5>
-      <div className="pad">
-        {heads.map(h => (
-          <a key={h.id} href="#" className={h.lv === "H3" ? "h3" : ""} onClick={e => jump(e, h.id)}>
-            {h.t}
-          </a>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function UnitRail({ data, unit, cur, preview, visited }) {
-  const ss = data.sessions.filter(s => s.unit === unit);
-  return (
-    <div className="rail-box">
-      <h5>Unit {ROMAN[unit]} sessions</h5>
-      <div className="pad">
-        {ss.map(s => {
-          const isVisited = visited && visited.includes(s.id);
-          return (
-            <a key={s.id} href={"#/s/" + s.id} className={(s.id === cur ? "cur " : "") + (s.enabled || preview ? "" : "lock")}>
-              <span className="d">{s.id}</span>
-              <span style={{ flex: 1 }}>{s.title}</span>
-              {isVisited && <span style={{ color: "var(--green)", fontSize: 11, marginLeft: 4 }}>✓</span>}
-            </a>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function LabRail({ data, ids, cur, preview, title }) {
-  const ls = (ids ? ids.map(id => data.labs.find(l => l.id === id)) : data.labs).filter(Boolean);
-  if (!ls.length) return null;
-  return (
-    <div className="rail-box">
-      <h5>{title}</h5>
-      <div className="pad">
-        {ls.map(l => (
-          <a key={l.id} href={"#/lab/" + l.id} className={(l.id === cur ? "cur " : "") + (l.enabled || preview ? "" : "lock")}>
-            <span className="d">{l.id}</span>
-            {l.title}
-          </a>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function SoftRail({ data, cur }) {
-  return (
-    <div className="rail-box">
-      <h5>Meet the software</h5>
-      <div className="pad">
-        {data.software.map(p => (
-          <a key={p.id} href={"#/sw/" + p.id} className={p.id === cur ? "cur" : ""}>
-            <span className="d">{p.ni}</span>
-            {p.title}
-          </a>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 function useText(path) {
   const [t, setT] = useState(null);
@@ -543,12 +469,7 @@ function MenuDrawer({ data, route, open, close, preview, visited }) {
             {data.pages.map(p => (
               <a key={p.id} className="fb-drawer__link" href={"#/page/" + p.id} {...cur(route[0] === "page" && route[1] === p.id)}>{p.title}</a>
             ))}
-          </div>
-          <div className="fb-drawer__group">
-            <p className="fb-drawer__label">Data and software links</p>
-            {data.links.map(([t, u]) => (
-              <a key={t} className="fb-drawer__link" href={u} target="_blank" rel="noopener">{t}</a>
-            ))}
+            <a className="fb-drawer__link" href="#/page/links" {...cur(route[0] === "page" && route[1] === "links")}>Data and software links</a>
           </div>
         </div>
         <div className="fb-drawer__foot">
@@ -808,222 +729,186 @@ function SessionView({ data, id, preview, markVisited, visited }) {
     </div>
   );
 }
+/* ---------- Shared bits for the redesigned pages ---------- */
+const listJoin = xs => (xs.length < 2 ? xs.join("") : xs.slice(0, -1).join(", ") + " and " + xs[xs.length - 1]);
+const sentence = t => {
+  if (!t || t !== t.toUpperCase()) return t;
+  const out = String(t).replace(/\s·\s/g, ", ").toLowerCase().replace(/\b([ls]\d+)\b/g, m => m.toUpperCase()).replace(/\b(i{1,3}|iv|v)\b/g, m => m.toUpperCase());
+  return out.charAt(0).toUpperCase() + out.slice(1);
+};
+
+const sessionState = (s, preview, visited) => {
+  if (visited && visited.includes(s.id)) return "read";
+  if (s.enabled) return "open";
+  if (preview) return "preview";
+  return "locked";
+};
+
+function StatusText({ state, release }) {
+  if (state === "read") return <span className="fb-state fb-state--read"><Icon as={Check} size={16} /> Read</span>;
+  if (state === "open") return <span className="fb-state">Open</span>;
+  if (state === "preview") return <span className="fb-state fb-state--locked"><Icon as={Lock} size={16} /> Unreleased</span>;
+  return <span className="fb-state fb-state--locked"><Icon as={Lock} size={16} /> {release ? "Opens " + release : "Opens later"}</span>;
+}
+
+function labState(l, preview) {
+  const st = store("ce633-lab-" + l.id) || {};
+  if (st.total && st.done && st.done.length >= st.total) return "read";
+  if (l.enabled) return "open";
+  return preview ? "preview" : "locked";
+}
+
+const RowLink = ({ href, children }) => (href ? <a className="fb-row" href={href}>{children}</a> : <div className="fb-row fb-row--locked">{children}</div>);
+
 /* ---------- Home ---------- */
-function Home({ data, visited, completedLabs }) {
-  const open = data.sessions.filter(s => s.enabled).length;
-  const lopen = data.labs.filter(l => l.enabled).length;
-  const visCount = visited ? visited.length : 0;
-  const totalVisPercent = Math.round((visCount / Math.max(1, open)) * 100);
+function Home({ data, visited, preview }) {
+  const released = data.sessions.filter(s => s.enabled);
+  const unread = released.filter(s => !(visited || []).includes(s.id));
+  const nextS = unread[0] || null;
+  const revise = !nextS && released.length ? released[released.length - 1] : null;
+  const target = nextS || revise;
+  const tu = target && data.units.find(u => u.n === target.unit);
+  const tpos = target ? data.sessions.filter(x => x.unit === target.unit).findIndex(x => x.id === target.id) + 1 : 0;
+  const tlabs = target ? (target.labs || []).map(id => data.labs.find(l => l.id === id)).filter(l => l && (l.enabled || preview)) : [];
+  const readN = data.sessions.filter(s => (visited || []).includes(s.id)).length;
+  const toRead = unread.length;
+  const toCome = data.sessions.filter(s => !s.enabled).length;
 
   return (
-    <div className="page">
-      <div className="ph">
-        <div>
-          <h1>Course Delivery Hub</h1>
-          <div className="hook">{data.course.title} · {data.course.programme}</div>
-        </div>
-        <div className="ph-tag">{data.course.code} · 2026–27</div>
-      </div>
-
-      <div className="progress-banner">
-        <div className="pb-left">
-          <b>Your Learning Progress</b>
-          <span>
-            {visCount} of {open} released theory sessions visited · {completedLabs} software labs underway
-          </span>
-        </div>
-        <div className="pb-bar-wrap">
-          <div className="pb-bar-bg">
-            <div className="pb-bar-fill" style={{ width: `${Math.min(100, totalVisPercent)}%` }} />
+    <div className="fb-single">
+      {target ? (
+        <section className="fb-nextclass" aria-labelledby="nextclass-title">
+          <div className="fb-nextclass__body">
+            <p className="fb-crumb">{nextS ? "Next class" : "Revise"}: Session {tpos}, Unit {ROMAN[target.unit]}{tu ? "  " + tu.short : ""}</p>
+            <h1 className="fb-title" id="nextclass-title">{target.title}</h1>
+            {target.hook && <p className="fb-lede" style={{ marginBottom: 0 }}>{target.hook}</p>}
           </div>
-          <div style={{ fontSize: 11, color: "var(--g400)", marginTop: 4, textAlign: "right" }}>
-            {totalVisPercent}% theory explored
+          <div className="fb-nextclass__actions">
+            <a className="fb-btn fb-btn--primary" href={"#/s/" + target.id}>{nextS ? "Read before class" : "Revise this session"}</a>
+            {tlabs[0] && <a className="fb-btn fb-btn--secondary" href={"#/lab/" + tlabs[0].id} title={tlabs[0].title}><Icon as={FlaskConical} /> Start Lab {tlabs[0].id}</a>}
           </div>
+        </section>
+      ) : (
+        <div className="fb-status fb-status--empty">
+          <Icon as={Lock} size={20} />
+          <div><h3>The course opens on the first day of class</h3><p>Set up the software in the meantime: <a href="#/page/setup">Software setup</a>.</p></div>
         </div>
-      </div>
+      )}
 
-      <div className="inst-box">
-        <div>
-          <div className="ib-lbl">⚙ Instructor — to release a session before class</div>
-          <div className="ib-text">
-            Edit <code>sessions.json</code> on GitHub → change <code>"enabled": false</code> to <code>"enabled": true</code> (theory sessions and labs are listed separately) → Commit. Students refresh after about a minute.
-          </div>
+      <section className="fb-timeline" aria-label="Semester progress">
+        <div className="fb-timeline__meta">
+          <span>Your semester, {data.sessions.length} sessions</span>
+          <span>{readN} read, {toRead} to read, {toCome} to come</span>
         </div>
-        <a className="edit-btn" href={REPO + "/edit/main/sessions.json"} target="_blank" rel="noopener">
-          ⚙ Edit sessions.json →
-        </a>
-      </div>
+        <div className="fb-timeline__bars" aria-hidden="true">
+          {data.sessions.map((s, k) => {
+            const st = (visited || []).includes(s.id) ? "done" : target && s.id === target.id && nextS ? "next" : s.enabled ? "open" : "upcoming";
+            const start = k > 0 && s.unit !== data.sessions[k - 1].unit;
+            return <span key={s.id} className={"fb-timeline__bar fb-timeline__bar--" + st + (start ? " fb-timeline__bar--unit-start" : "")} title={s.id + ": " + s.title} />;
+          })}
+        </div>
+        <div className="fb-timeline__units" aria-hidden="true">
+          {data.units.map(u => <span key={u.n}>Unit {ROMAN[u.n]}</span>)}
+        </div>
+      </section>
 
-      <div className="stat-grid">
-        <div className="stat"><div className="sv">{open}</div><div className="sl">Theory sessions open</div></div>
-        <div className="stat"><div className="sv">{lopen}</div><div className="sl">Labs open</div></div>
-        <div className="stat"><div className="sv">{data.sessions.length}</div><div className="sl">Total sessions</div></div>
-        <div className="stat"><div className="sv">{data.labs.length}</div><div className="sl">Software labs</div></div>
-      </div>
+      <section aria-labelledby="units-title">
+        <h2 className="fb-h2" id="units-title">Units</h2>
+        <div className="fb-rows">
+          {data.units.map(u => {
+            const ss = data.sessions.filter(s => s.unit === u.n);
+            const open = ss.filter(s => s.enabled).length;
+            const read = ss.filter(s => (visited || []).includes(s.id)).length;
+            const status = open === 0 ? "Not yet open" : open + " of " + ss.length + " open" + (read ? ", " + read + " read" : "");
+            return (
+              <RowLink key={u.n} href={"#/unit/" + u.n}>
+                <span className="fb-row__num">{ROMAN[u.n]}</span>
+                <span className="fb-row__main"><span className="fb-row__title">{u.title}</span><span className="fb-row__sub">{u.hours} hours, {u.co}</span></span>
+                <span className="fb-row__side">{status}</span>
+              </RowLink>
+            );
+          })}
+        </div>
+      </section>
 
-      <div className="flow">
-        <div>
-          <i>01 · BEFORE CLASS</i>
-          <b>Read the Theory</b>
-          <span>Notes, slide figures, solved numericals and interactive tools — everything examinable.</span>
-        </div>
-        <div>
-          <i>02 · IN CLASS</i>
-          <b>Concept by hand</b>
-          <span>A short worked problem or data exercise so the numbers mean something.</span>
-        </div>
-        <div>
-          <i>03 · IN CLASS · LAB TRACK</i>
-          <b>Same idea in software</b>
-          <span>Step-by-step HEC-HMS / QGIS / HEC-RAS lab that rebuilds what you computed.</span>
-        </div>
-      </div>
-
-      <div className="sec-title">Units — click to view sessions</div>
-      {data.units.map(u => {
-        const ss = data.sessions.filter(s => s.unit === u.n);
-        const openInUnit = ss.filter(s => s.enabled).length;
-        const visInUnit = ss.filter(s => visited && visited.includes(s.id)).length;
-        return (
-          <a key={u.n} className="unc" href={"#/unit/" + u.n}>
-            <div className="unc-l">
-              <div className={"unc-badge " + UB[u.n]}>U{u.n}</div>
-              <div>
-                <div className="unc-title">{u.title}</div>
-                <div className="unc-sub">
-                  Days {ss[0].day}–{ss[ss.length - 1].day} · {u.co} · {openInUnit} of {ss.length} open
-                  {visInUnit > 0 && ` · ${visInUnit} visited`}
-                </div>
-              </div>
-            </div>
-            <div className="unc-r">{u.hours} HRS →</div>
-          </a>
-        );
-      })}
-
-      <a className="unc" href="#/labs">
-        <div className="unc-l">
-          <div className="unc-badge ulb">LAB</div>
-          <div>
-            <div className="unc-title">Software lab track — HEC-HMS, QGIS, HEC-RAS</div>
-            <div className="unc-sub">
-              Step-by-step labs that run in parallel with the theory · {lopen} of {data.labs.length} open
-            </div>
-          </div>
-        </div>
-        <div className="unc-r">PARALLEL →</div>
-      </a>
+      <p className="fb-links-row">
+        <a className="fb-btn fb-btn--secondary" href="#/labs"><Icon as={FlaskConical} /> Software lab track</a>
+        <a className="fb-btn fb-btn--ghost" href="#/page/setup">Software setup</a>
+      </p>
     </div>
   );
 }
 
 /* ---------- Unit page ---------- */
-function Status({ on, rel }) {
-  return on ? <span className="s-open">OPEN</span> : <span className="s-lock">{rel ? "OPENS " + rel : "LOCKED"}</span>;
-}
-
 function UnitPage({ data, n, preview, visited }) {
   const u = data.units.find(x => x.n === n);
-  if (!u) return <div className="page">Unit not found.</div>;
+  if (!u) return <div className="fb-single"><div className="fb-status fb-status--empty"><div><h3>Unit not found</h3><p>Open the <a href="#/">Home page</a> to see all five units.</p></div></div></div>;
   const ss = data.sessions.filter(s => s.unit === n);
+  const labs = data.labs.filter(l => l.unit === n);
+  const read = ss.filter(s => (visited || []).includes(s.id)).length;
+  const open = ss.filter(s => s.enabled).length;
 
   return (
-    <div className="page">
-      <div className="ph">
-        <div>
-          <div className="crumb"><a href="#/">CE633</a> / Unit {ROMAN[n]}</div>
-          <h1>Unit {n} — {u.title}</h1>
+    <div className="fb-session fb-session--rail">
+      <aside className="fb-session__nav">
+        <nav className="fb-sidenav" aria-label="Units">
+          <p className="fb-sidenav__unit">Units</p>
+          <ol>
+            {data.units.map(x => (
+              <li key={x.n}><a className="fb-sidenav__item" href={"#/unit/" + x.n} aria-current={x.n === n ? "page" : undefined}><span className="fb-sidenav__num">{ROMAN[x.n]}</span><span>{x.short}</span></a></li>
+            ))}
+          </ol>
+        </nav>
+      </aside>
+      <article className="fb-article">
+        <p className="fb-crumb">Unit {ROMAN[n]}</p>
+        <h1 className="fb-title">{u.title}</h1>
+        <p className="fb-meta">{u.hours} hours, {u.co}, days {ss[0].day} to {ss[ss.length - 1].day}</p>
+        <details className="fb-disclosure">
+          <summary>Syllabus</summary>
+          <p>{u.syllabus}</p>
+        </details>
+        {open === 0 && !preview && (
+          <div className="fb-status fb-status--empty" style={{ marginBottom: "var(--space-5)" }}>
+            <Icon as={Lock} size={20} />
+            <div><h3>Unit {ROMAN[n]} opens after Unit {ROMAN[n - 1] || "I"}</h3><p>The session list below shows what is coming.</p></div>
+          </div>
+        )}
+        <div className="fb-rows">
+          {ss.map((s, k) => {
+            const state = sessionState(s, preview, visited);
+            const sl = (s.labs || []).filter(id => data.labs.some(l => l.id === id));
+            return (
+              <RowLink key={s.id} href={s.enabled || preview ? "#/s/" + s.id : null}>
+                <span className="fb-row__num">{k + 1}</span>
+                <span className="fb-row__main">
+                  <span className="fb-row__title">{s.title}</span>
+                  {s.hook && <span className="fb-row__sub">{s.hook}</span>}
+                  <span className="fb-row__meta">Day {s.day}{sl.length ? (sl.length > 1 ? ", labs " : ", lab ") + listJoin(sl) : ""}{s.ready === false ? ", outline only" : ""}</span>
+                </span>
+                <span className="fb-row__side"><StatusText state={state} release={s.release} /></span>
+              </RowLink>
+            );
+          })}
         </div>
-        <div className="ph-tag">Days {ss[0].day}–{ss[ss.length - 1].day}</div>
-      </div>
-
-      <div className="unit-hero">
-        <div>
-          <div className="uh-num">Unit {ROMAN[n]} · {u.co}</div>
-          <div className="uh-name">{u.title}</div>
-          <div className="uh-syl">{u.syllabus}</div>
-        </div>
-        <div className="uh-right">
-          <span className="hrs-badge">{String(u.hours).padStart(2, "0")} Hours</span>
-          <span className={"co-badge " + UB[n]}>{u.co}</span>
-        </div>
-      </div>
-
-      <div className="tw">
-        <table className="t">
-          <thead>
-            <tr>
-              <th style={{ width: 56 }}>Day</th>
-              <th>Topic &amp; hook</th>
-              <th>Theory</th>
-              <th>Software lab</th>
-              <th style={{ width: 92 }}>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {ss.map(s => {
-              const can = s.enabled || preview;
-              const labs = (s.labs || []).map(id => data.labs.find(l => l.id === id)).filter(Boolean);
-              const isVis = visited && visited.includes(s.id);
-
-              return (
-                <tr key={s.id} className={s.enabled ? "" : "locked"}>
-                  <td>
-                    <span className="day-num">{String(s.day).padStart(2, "0")}</span>
-                  </td>
-                  <td>
-                    <div className="t-topic">
-                      {s.title} {isVis && <span style={{ color: "var(--green)", fontSize: 12 }}>✓</span>}
-                    </div>
-                    <div className="t-hook">{s.hook}</div>
-                    <div style={{ marginTop: 4 }}>
-                      {(s.software || []).map(x => <Chip key={x} s={x} />)}
-                    </div>
-                  </td>
-                  <td>
-                    {can ? (
-                      <a className="lnk theory" href={"#/s/" + s.id}>
-                        ▶ {s.ready ? "Open notes" : "Outline"}
-                      </a>
-                    ) : (
-                      <span className="locked-pill">🔒 locked</span>
-                    )}
-                  </td>
-                  <td>
-                    <div className="btn-row">
-                      {labs.length ? (
-                        labs.map(l =>
-                          l.enabled || preview ? (
-                            <a key={l.id} className="lnk lab" href={"#/lab/" + l.id}>
-                              {l.id}
-                            </a>
-                          ) : (
-                            <span key={l.id} className="locked-pill">{l.id}</span>
-                          )
-                        )
-                      ) : s.lab ? (
-                        <span style={{ color: "var(--g600)", fontSize: 11, fontStyle: "italic" }} title={s.lab}>
-                          {s.lab.length > 32 ? s.lab.slice(0, 30) + "…" : s.lab}
-                        </span>
-                      ) : (
-                        <span style={{ color: "var(--g400)", fontSize: 11 }}>—</span>
-                      )}
-                    </div>
-                  </td>
-                  <td>
-                    <Status on={s.enabled} rel={s.release} />
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-      {preview && (
-        <p className="footer-note">
-          Instructor preview is on: locked sessions are viewable in this browser tab.
-        </p>
-      )}
+      </article>
+      <aside className="fb-rail" aria-label="Unit progress and labs">
+        <section className="fb-panel">
+          <h2>Your progress</h2>
+          <p className="fb-panel__big">{read} of {ss.length} read</p>
+          <div className="fb-progress" aria-hidden="true"><i style={{ width: (100 * read) / ss.length + "%" }} /></div>
+        </section>
+        {labs.length > 0 && (
+          <section className="fb-panel">
+            <h2>Labs in this unit</h2>
+            <ul>
+              {labs.map(l => (
+                <li key={l.id}>{l.enabled || preview ? <a href={"#/lab/" + l.id}><Icon as={FlaskConical} size={16} /> {l.id}: {l.title}</a> : <span className="fb-panel__muted">{l.id}: {l.title}</span>}</li>
+              ))}
+            </ul>
+          </section>
+        )}
+      </aside>
     </div>
   );
 }
@@ -1031,93 +916,42 @@ function UnitPage({ data, n, preview, visited }) {
 /* ---------- Lab track page ---------- */
 function LabsPage({ data, preview }) {
   const groups = [...new Set(data.labs.map(l => l.unit))];
-
   return (
-    <div className="page">
-      <div className="ph">
-        <div>
-          <div className="crumb"><a href="#/">CE633</a> / Labs</div>
-          <h1>Software lab track</h1>
-        </div>
-        <div className="ph-tag">HEC-HMS · QGIS · HEC-RAS</div>
-      </div>
+    <div className="fb-single">
+      <p className="fb-crumb">Software</p>
+      <h1 className="fb-title">Software lab track</h1>
+      <p className="fb-lede">Each lab is a short sequence of steps: what to click, what you should see, and what to do if it goes wrong. One HEC-HMS project grows through the semester, so do the labs in order.</p>
+      <p className="fb-links-row" style={{ marginTop: 0 }}>
+        <a className="fb-btn fb-btn--secondary" href="#/page/setup">Install the software</a>
+      </p>
 
-      <div className="unit-hero">
-        <div>
-          <div className="uh-num">Runs in parallel with the theory</div>
-          <div className="uh-name">Learn the software one step at a time</div>
-          <div className="uh-syl">
-            Each lab is a sequence of small steps: what to click, what you should see, and what to do if it goes wrong. Labs build on each other — one HEC-HMS project grows through the semester — so do them in order. The "With theory" column shows which theory session each lab accompanies.
-          </div>
-        </div>
-        <div className="uh-right">
-          <a className="edit-btn" href="#/page/setup">Install software →</a>
-        </div>
-      </div>
-
-      <div className="sec-title">Meet the software first</div>
-      <div className="softcards">
+      <h2 className="fb-h2">Software guides</h2>
+      <div className="fb-rows">
         {data.software.map(p => (
-          <a key={p.id} className="softcard" href={"#/sw/" + p.id} style={{ borderTopColor: p.color }}>
-            <i>{p.when}</i>
-            <b>{p.title}</b>
-            <span>{p.hook}</span>
-          </a>
+          <RowLink key={p.id} href={"#/sw/" + p.id}>
+            <span className="fb-row__main"><span className="fb-row__title">{p.title}</span><span className="fb-row__sub">{p.hook}</span></span>
+            <span className="fb-row__side">{sentence(p.when)}</span>
+          </RowLink>
         ))}
       </div>
 
       {groups.map(g => (
-        <div key={g}>
-          <div className="sec-title">Unit {ROMAN[g]} labs</div>
-          <div className="tw">
-            <table className="t">
-              <thead>
-                <tr>
-                  <th style={{ width: 56 }}>Lab</th>
-                  <th>What you will do</th>
-                  <th>Software</th>
-                  <th>With theory</th>
-                  <th>Open</th>
-                  <th style={{ width: 92 }}>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.labs
-                  .filter(l => l.unit === g)
-                  .map(l => {
-                    const can = l.enabled || preview;
-                    return (
-                      <tr key={l.id} className={l.enabled ? "" : "locked"}>
-                        <td><span className="day-num">{l.id}</span></td>
-                        <td>
-                          <div className="t-topic">{l.title}</div>
-                          <div className="t-hook">{l.goal}</div>
-                        </td>
-                        <td>{l.software.map(x => <Chip key={x} s={x} />)}</td>
-                        <td>
-                          <div className="btn-row">
-                            {l.sessions.map(s => (
-                              <a key={s} className="lnk theory" href={"#/s/" + s}>{s}</a>
-                            ))}
-                          </div>
-                        </td>
-                        <td>
-                          {can ? (
-                            <a className="lnk lab" href={"#/lab/" + l.id}>
-                              ▶ Start · {l.minutes} min
-                            </a>
-                          ) : (
-                            <span className="locked-pill">🔒 locked</span>
-                          )}
-                        </td>
-                        <td><Status on={l.enabled} rel={l.release} /></td>
-                      </tr>
-                    );
-                  })}
-              </tbody>
-            </table>
+        <section key={g}>
+          <h2 className="fb-h2">Unit {ROMAN[g]} labs</h2>
+          <div className="fb-rows">
+            {data.labs.filter(l => l.unit === g).map(l => (
+              <RowLink key={l.id} href={l.enabled || preview ? "#/lab/" + l.id : null}>
+                <span className="fb-row__num">{l.id}</span>
+                <span className="fb-row__main">
+                  <span className="fb-row__title">{l.title}</span>
+                  {l.goal && <span className="fb-row__sub">{l.goal}</span>}
+                  <span className="fb-row__meta">{listJoin(l.software)}, about {l.minutes} min, goes with {listJoin(l.sessions)}</span>
+                </span>
+                <span className="fb-row__side"><StatusText state={labState(l, preview)} release={l.release} /></span>
+              </RowLink>
+            ))}
           </div>
-        </div>
+        </section>
       ))}
     </div>
   );
@@ -1142,50 +976,82 @@ function parseLab(src) {
   return { intro, steps, outro };
 }
 
-function StepCard({ st, k, n, all, done, toggle, setCur, setDone }) {
+function LabStep({ st, k, n, all, done, toggle, go, finish }) {
+  const isDone = done.includes(k);
   return (
-    <div className="stepcard">
-      <div className="sh">
-        <div className="n">{k + 1}</div>
-        <h3>{st.title}</h3>
+    <section className={"fb-labstep" + (isDone ? " is-done" : "")} id={"step-" + (k + 1)} aria-labelledby={"step-title-" + k}>
+      <h2 className="fb-labstep__head" id={"step-title-" + k}>
+        <span className="fb-labstep__num">{isDone ? <Icon as={Check} size={16} /> : k + 1}</span>
+        <span>{st.title}</span>
+      </h2>
+      <Content md={st.md} />
+      <div className="fb-labstep__foot">
+        <label className="fb-check">
+          <input type="checkbox" checked={isDone} onChange={() => toggle(k)} />
+          <span>Done</span>
+        </label>
+        {!all && (
+          <div className="fb-labstep__nav">
+            {k > 0 && <button className="fb-btn fb-btn--ghost" onClick={() => go(k - 1)}>Back</button>}
+            {k < n - 1 ? (
+              <button className="fb-btn fb-btn--primary" onClick={() => { if (!isDone) toggle(k); go(k + 1); }}>Done, next step</button>
+            ) : (
+              <button className="fb-btn fb-btn--primary" onClick={() => { if (!isDone) toggle(k); finish(); }}>Finish the lab</button>
+            )}
+          </div>
+        )}
       </div>
-      <div className="sb2">
-        <Content md={st.md} />
+    </section>
+  );
+}
+
+function LabProgress({ steps, done, cur, all, setAll, go, reset }) {
+  return (
+    <section className="fb-panel fb-labprogress">
+      <h2>Steps</h2>
+      <p className="fb-panel__big">{done.length} of {steps.length} done</p>
+      <div className="fb-progress" aria-hidden="true"><i style={{ width: (100 * done.length) / Math.max(1, steps.length) + "%" }} /></div>
+      <ol className="fb-steplist">
+        {steps.map((st, k) => (
+          <li key={k}>
+            <button className={"fb-steplist__item" + (k === cur && !all ? " is-current" : "")} aria-current={k === cur && !all ? "step" : undefined} onClick={() => go(k)}>
+              <span className="fb-steplist__num">{done.includes(k) ? <><Icon as={Check} size={14} /><span className="fb-sr">Done:</span></> : k + 1}</span>
+              <span>{st.title}</span>
+            </button>
+          </li>
+        ))}
+      </ol>
+      <div className="fb-labprogress__actions">
+        <button className="fb-btn fb-btn--ghost" onClick={() => setAll(!all)}>{all ? "One step at a time" : "Show all steps"}</button>
+        {done.length > 0 && <button className="fb-btn fb-btn--ghost" onClick={reset}>Reset progress</button>}
       </div>
-      {!all && (
-        <div className="sf">
-          <button className="btn ghost" disabled={k === 0} onClick={() => setCur(k - 1)}>
-            ← Back
-          </button>
-          <label>
-            <input type="checkbox" checked={done.includes(k)} onChange={() => toggle(k)} />
-            I have completed this step
-          </label>
-          {k < n - 1 ? (
-            <button
-              className="btn"
-              onClick={() => {
-                if (!done.includes(k)) setDone([...done, k]);
-                setCur(k + 1);
-              }}
-            >
-              Done — next step →
-            </button>
-          ) : (
-            <button
-              className="btn"
-              onClick={() => {
-                if (!done.includes(k)) setDone([...done, k]);
-                const o = document.getElementById("lab-outro");
-                if (o) o.scrollIntoView({ behavior: "smooth" });
-              }}
-            >
-              Finish lab ✓
-            </button>
-          )}
-        </div>
-      )}
-    </div>
+    </section>
+  );
+}
+
+function LabNav({ data, cur, preview }) {
+  return (
+    <nav className="fb-sidenav fb-sidenav--labs" aria-label="Labs">
+      <p className="fb-sidenav__unit"><a href="#/labs">Lab track</a></p>
+      <ol>
+        {data.labs.map(l => {
+          const open = l.enabled || preview;
+          const finished = labState(l, preview) === "read";
+          return (
+            <li key={l.id}>
+              {open ? (
+                <a className="fb-sidenav__item" href={"#/lab/" + l.id} aria-current={l.id === cur ? "page" : undefined}>
+                  <span className="fb-sidenav__num">{l.id}</span><span>{l.title}</span>
+                  {finished && <span className="fb-sidenav__read"><Icon as={Check} size={16} /><span className="fb-sr">Finished</span></span>}
+                </a>
+              ) : (
+                <span className="fb-sidenav__locked"><span className="fb-sidenav__num">{l.id}</span><span>{l.title}</span></span>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+    </nav>
   );
 }
 
@@ -1196,6 +1062,8 @@ function LabView({ data, id, preview, refreshLabs }) {
   const [cur, setCur] = useState(0);
   const [done, setDone] = useState([]);
   const [all, setAll] = useState(false);
+  const parsed = useMemo(() => (src ? parseLab(src) : { intro: "", steps: [], outro: "" }), [src]);
+  const { intro, steps, outro } = parsed;
 
   useEffect(() => {
     const st = store(key) || {};
@@ -1205,202 +1073,144 @@ function LabView({ data, id, preview, refreshLabs }) {
   }, [id]);
 
   useEffect(() => {
-    store(key, { cur, done });
+    store(key, { cur, done, total: steps.length || (store(key) || {}).total || 0 });
     if (refreshLabs) refreshLabs();
-  }, [cur, done]);
+  }, [cur, done, steps.length]);
 
-  if (!l) return <div className="page"><div className="locked-box">Lab not found.</div></div>;
+  if (!l) return <div className="fb-single"><div className="fb-status fb-status--empty"><div><h3>Lab not found</h3><p>Open the <a href="#/labs">lab track</a> to see every lab.</p></div></div></div>;
 
-  const { intro, steps, outro } = src ? parseLab(src) : { steps: [] };
   const vis = data.labs.filter(x => x.enabled || preview);
   const i = vis.findIndex(x => x.id === id);
   const prev = vis[i - 1];
   const next = vis[i + 1];
-  const toggle = k => setDone(done.includes(k) ? done.filter(x => x !== k) : [...done, k]);
+  const toggle = k => setDone(d => (d.includes(k) ? d.filter(x => x !== k) : [...d, k]));
+  const go = k => {
+    setCur(k);
+    if (all) {
+      const el = document.getElementById("step-" + (k + 1));
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    } else {
+      const el = document.getElementById("lab-steps");
+      if (el && el.getBoundingClientRect().top < 0) el.scrollIntoView({ block: "start" });
+    }
+  };
+  const finish = () => { const o = document.getElementById("lab-outro"); if (o) o.scrollIntoView({ behavior: "smooth" }); };
+  const locked = !l.enabled && !preview;
+  const k = Math.min(cur, Math.max(0, steps.length - 1));
 
   return (
-    <div className="page">
-      <div className="ph">
-        <div>
-          <div className="crumb"><a href="#/">CE633</a> / <a href="#/labs">Lab track</a> / {l.id}</div>
-          <h1>{l.title}</h1>
-          <div className="hook">{l.goal}</div>
-          <div className="sess-meta">
-            {l.software.map(x => <Chip key={x} s={x} />)}
-            <span className="chip other">≈ {l.minutes} min</span>
-            {l.sessions.map(s => (
-              <a key={s} className="lnk theory" href={"#/s/" + s}>Theory {s}</a>
-            ))}
-            {!l.enabled && <span className="chip other">locked · instructor preview</span>}
-          </div>
-          <div className="topnav">
-            {prev && <a href={"#/lab/" + prev.id}>← {prev.id}: {prev.title.slice(0, 24)}…</a>}
-            <a href="#/labs">All labs</a>
-            {next && <a href={"#/lab/" + next.id}>{next.id}: {next.title.slice(0, 24)}… →</a>}
-          </div>
-        </div>
-        <div className="ph-tag">{l.id}</div>
-      </div>
-
-      {!l.enabled && !preview ? (
-        <div className="locked-box">
-          <p style={{ fontSize: 28, marginBottom: 8 }}>🔒</p>
-          <p style={{ fontWeight: 600 }}>This lab has not been released yet.</p>
-        </div>
-      ) : !src ? (
-        <p style={{ padding: "30px 0" }}>Loading lab guide…</p>
-      ) : (
-        <>
-          <Content md={intro} />
-          {steps.length > 0 && (
-            <div className="lab-wrap">
-              <div className="steplist">
-                <div className="pg">
-                  {done.length} / {steps.length} steps completed
-                  <div className="bar">
-                    <i style={{ width: (100 * done.length) / steps.length + "%" }} />
-                  </div>
+    <div className="fb-session fb-session--rail">
+      <aside className="fb-session__nav"><LabNav data={data} cur={id} preview={preview} /></aside>
+      <article className="fb-article">
+        <p className="fb-crumb"><a href="#/labs">Lab track</a> / {l.id}{!l.enabled && preview && <> / <b>Unreleased</b></>}</p>
+        <h1 className="fb-title">{l.title}</h1>
+        {l.goal && <p className="fb-lede">{l.goal}</p>}
+        <p className="fb-meta">
+          {l.software.join(" and ")}, about {l.minutes} min, goes with{" "}
+          {l.sessions.map((s, j) => <React.Fragment key={s}>{j > 0 && " and "}<a href={"#/s/" + s}>{s}</a></React.Fragment>)}
+        </p>
+        {locked ? (
+          <div className="fb-status fb-status--empty"><Icon as={Lock} size={20} /><div><h3>This lab opens with its theory session</h3><p>Finish the labs already open on the <a href="#/labs">lab track</a> first.</p></div></div>
+        ) : !src ? (
+          <div className="fb-skeleton" aria-busy="true" aria-label="Loading lab"><span style={{ width: "60%", height: 24 }} /><span /><span /><span style={{ width: "80%" }} /></div>
+        ) : (
+          <>
+            <Content md={intro} />
+            {steps.length > 0 && (
+              <div id="lab-steps">
+                <div className="fb-labprogress--inline">
+                  <span>{done.length} of {steps.length} steps done</span>
+                  <div className="fb-progress" aria-hidden="true"><i style={{ width: (100 * done.length) / steps.length + "%" }} /></div>
+                  <button className="fb-btn fb-btn--ghost" onClick={() => setAll(!all)}>{all ? "One step at a time" : "Show all steps"}</button>
                 </div>
-                {steps.map((st, k) => (
-                  <button
-                    key={k}
-                    className={(k === cur && !all ? "cur " : "") + (done.includes(k) ? "done" : "")}
-                    onClick={() => {
-                      setAll(false);
-                      setCur(k);
-                    }}
-                  >
-                    <span className="dot">{done.includes(k) ? "✓" : k + 1}</span>
-                    <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{st.title}</span>
-                  </button>
-                ))}
-                <div style={{ padding: "8px 14px 0" }}>
-                  <button className="btn ghost" style={{ width: "100%" }} onClick={() => setAll(!all)}>
-                    {all ? "One step at a time" : "Show all steps"}
-                  </button>
-                </div>
-                {done.length > 0 && (
-                  <div style={{ padding: "6px 14px 0" }}>
-                    <button
-                      className="btn ghost"
-                      style={{ width: "100%" }}
-                      onClick={() => {
-                        setDone([]);
-                        setCur(0);
-                      }}
-                    >
-                      Reset progress
-                    </button>
-                  </div>
-                )}
+                {all
+                  ? steps.map((st, j) => <LabStep key={id + j} st={st} k={j} n={steps.length} all={all} done={done} toggle={toggle} go={go} finish={finish} />)
+                  : <LabStep key={id + k} st={steps[k]} k={k} n={steps.length} all={all} done={done} toggle={toggle} go={go} finish={finish} />}
               </div>
-              <div>
-                {all ? (
-                  <div className="allsteps">
-                    {steps.map((st, k) => (
-                      <StepCard
-                        key={id + k}
-                        st={st}
-                        k={k}
-                        n={steps.length}
-                        all={all}
-                        done={done}
-                        toggle={toggle}
-                        setCur={setCur}
-                        setDone={setDone}
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  (() => {
-                    const k = Math.min(cur, steps.length - 1);
-                    return (
-                      <StepCard
-                        key={id + k}
-                        st={steps[k]}
-                        k={k}
-                        n={steps.length}
-                        all={all}
-                        done={done}
-                        toggle={toggle}
-                        setCur={setCur}
-                        setDone={setDone}
-                      />
-                    );
-                  })()
-                )}
-              </div>
-            </div>
-          )}
-          <div id="lab-outro">
-            <Content md={outro} />
-          </div>
-          <div className="pager">
-            {prev ? (
-              <a href={"#/lab/" + prev.id}>
-                <small>← PREVIOUS LAB</small>
-                {prev.id} · {prev.title}
-              </a>
-            ) : (
-              <span />
             )}
-            {next ? (
-              <a href={"#/lab/" + next.id} style={{ textAlign: "right" }}>
-                <small>NEXT LAB →</small>
-                {next.id} · {next.title}
-              </a>
-            ) : (
-              <span />
-            )}
-          </div>
-        </>
-      )}
+            <div id="lab-outro"><Content md={outro} /></div>
+            <nav className="fb-pager" aria-label="Labs">
+              {prev ? <a href={"#/lab/" + prev.id}><small>Previous lab</small>{prev.id}: {prev.title}</a> : <span />}
+              {next ? <a className="fb-pager__next" href={"#/lab/" + next.id}><small>Next lab</small>{next.id}: {next.title}</a> : <span />}
+            </nav>
+          </>
+        )}
+      </article>
+      <aside className="fb-rail" aria-label="Lab progress">
+        {!locked && steps.length > 0 && (
+          <LabProgress steps={steps} done={done} cur={k} all={all} setAll={setAll} go={go} reset={() => { setDone([]); setCur(0); }} />
+        )}
+      </aside>
     </div>
   );
 }
 
-function PageView({ data, id, list, kind }) {
+/* ---------- Software guides and course pages ---------- */
+function PageView({ data, id, list, kind, preview }) {
   const p = list.find(x => x.id === id);
   const src = useText(p && p.file);
   const [heads, setHeads] = useState([]);
 
-  if (!p) return <div className="page">Page not found.</div>;
+  if (!p) return <div className="fb-single"><div className="fb-status fb-status--empty"><div><h3>Page not found</h3><p>Open the menu to see every page.</p></div></div></div>;
+
+  const swName = kind === "sw" ? p.title.replace(/^About\s+/i, "") : null;
+  const swLabs = swName ? data.labs.filter(l => (l.software || []).includes(swName)) : [];
+  const h2s = heads.filter(h => h.lv === "H2");
 
   return (
-    <div className="page">
-      <div className="ph">
-        <div>
-          <div className="crumb">
-            <a href="#/">CE633</a> / {kind === "sw" ? <a href="#/labs">Software</a> : "Course"} / {p.title}
-          </div>
-          <h1>{p.title}</h1>
-          <div className="hook">{p.hook}</div>
-        </div>
-        <div className="ph-tag">{kind === "sw" ? "SOFTWARE" : data.course.code}</div>
-      </div>
-      <div className="with-rail">
-        <div>{src ? <Content md={src} onHeads={setHeads} /> : "Loading…"}</div>
-        <aside className="rail">
-          {kind === "sw" ? (
-            <>
-              <SoftRail data={data} cur={id} />
-              <LabRail data={data} title="Lab track" />
-            </>
-          ) : (
-            <div className="rail-box">
-              <h5>Course pages</h5>
-              <div className="pad">
-                {data.pages.map(q => (
-                  <a key={q.id} href={"#/page/" + q.id} className={q.id === id ? "cur" : ""}>
-                    <span className="d">{q.ni}</span>
-                    {q.title}
-                  </a>
-                ))}
-              </div>
-            </div>
-          )}
-          <Toc heads={heads} />
-        </aside>
+    <div className="fb-session fb-session--rail">
+      <aside className="fb-session__nav">
+        <nav className="fb-sidenav" aria-label={kind === "sw" ? "Software guides" : "Course pages"}>
+          <p className="fb-sidenav__unit">{kind === "sw" ? "Software guides" : "Course"}</p>
+          <ol>
+            {list.map(q => (
+              <li key={q.id}><a className="fb-sidenav__item" href={"#/" + kind + "/" + q.id} aria-current={q.id === id ? "page" : undefined}><span>{q.title}</span></a></li>
+            ))}
+            {kind === "page" && <li><a className="fb-sidenav__item" href="#/page/links"><span>Data and software links</span></a></li>}
+          </ol>
+        </nav>
+      </aside>
+      <article className="fb-article">
+        <p className="fb-crumb">{kind === "sw" ? <a href="#/labs">Software</a> : "Course"}</p>
+        <h1 className="fb-title">{p.title}</h1>
+        {p.hook && <p className="fb-lede">{p.hook}</p>}
+        {src ? <Content md={src} onHeads={setHeads} /> : <div className="fb-skeleton" aria-busy="true" aria-label="Loading page"><span style={{ width: "60%", height: 24 }} /><span /><span /><span style={{ width: "80%" }} /></div>}
+      </article>
+      <aside className="fb-rail" aria-label="Related">
+        {swLabs.length > 0 && (
+          <section className="fb-panel">
+            <h2>Labs that use {swName}</h2>
+            <ul>
+              {swLabs.map(l => (
+                <li key={l.id}>{l.enabled || preview ? <a href={"#/lab/" + l.id}><Icon as={FlaskConical} size={16} /> {l.id}: {l.title}</a> : <span className="fb-panel__muted">{l.id}: {l.title}</span>}</li>
+              ))}
+            </ul>
+          </section>
+        )}
+        {h2s.length > 0 && (
+          <section className="fb-panel">
+            <h2>On this page</h2>
+            <ul>{h2s.map(h => <li key={h.id}><a href="#" onClick={e => jump(e, h.id)}>{h.t}</a></li>)}</ul>
+          </section>
+        )}
+      </aside>
+    </div>
+  );
+}
+
+function LinksPage({ data }) {
+  return (
+    <div className="fb-single">
+      <p className="fb-crumb">Course</p>
+      <h1 className="fb-title">Data and software links</h1>
+      <p className="fb-lede">Downloads for the course software and the data sources used in sessions and labs. Links open the provider's site in a new tab.</p>
+      <div className="fb-rows">
+        {data.links.map(([t, u]) => (
+          <a key={t} className="fb-row" href={u} target="_blank" rel="noopener">
+            <span className="fb-row__main"><span className="fb-row__title">{t}</span><span className="fb-row__sub">{u.replace(/^https?:\/\//, "").replace(/\/$/, "")}</span></span>
+            <span className="fb-row__side"><Icon as={ChevronRight} /></span>
+          </a>
+        ))}
       </div>
     </div>
   );
@@ -1460,13 +1270,13 @@ function App() {
       view = <LabView data={data} id={route[1]} preview={preview} refreshLabs={refreshLabs} />;
       break;
     case "page":
-      view = <PageView data={data} id={route[1]} list={data.pages} kind="page" />;
+      view = route[1] === "links" ? <LinksPage data={data} /> : <PageView key={"page" + route[1]} data={data} id={route[1]} list={data.pages} kind="page" preview={preview} />;
       break;
     case "sw":
-      view = <PageView key={"sw" + route[1]} data={data} id={route[1]} list={data.software} kind="sw" />;
+      view = <PageView key={"sw" + route[1]} data={data} id={route[1]} list={data.software} kind="sw" preview={preview} />;
       break;
     default:
-      view = <Home data={data} visited={visited} completedLabs={completedLabs} />;
+      view = <Home data={data} visited={visited} preview={preview} />;
   }
 
   return (
