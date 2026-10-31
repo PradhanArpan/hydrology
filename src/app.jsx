@@ -4,11 +4,11 @@ import { createPortal } from "react-dom";
 import { renderMd, enhance, esc } from "./md.js";
 import { WIDGETS } from "./widgets.jsx";
 import { ILLOS } from "./illos.jsx";
-import { Menu, Search, Sun, Moon, X, Check, Printer, Lock, FlaskConical, ChevronRight, Maximize2 } from "lucide-react";
+import { Menu, Search, Sun, Moon, X, Check, Printer, Lock, FlaskConical, ChevronRight, Code, Calculator, CloudRain, Droplets, Activity, LineChart, Layers, Map as MapIcon, Wind } from "lucide-react";
 
 const ALL_COMPONENTS = { ...ILLOS, ...WIDGETS };
 
-// Interactive tools that dock in the session workbench (the rest stay inline as figures).
+// Interactive tools that open in a pop-up window from a card in the reading column (the rest stay inline as figures).
 const DOCK_TOOLS = {
   waterbudget: "Water-budget calculator",
   abstractions: "Where does a storm's rain go?",
@@ -29,8 +29,33 @@ const DOCK_TOOLS = {
   pencalc: "Evapotranspiration calculator"
 };
 
-// Tools with enough controls and charts that the 380px rail is cramped: these get "Open larger".
-const EXPANDABLE = new Set(["dmc", "thiessen", "storm", "idf", "missing", "hortonfit", "phiindex", "scscn", "pencalc", "movavg", "d8"]);
+// Icon shown on a tool's placeholder picture until a real screenshot exists.
+const TOOL_ICON = {
+  waterbudget: Calculator, abstractions: Droplets, dalton: Wind, tipping: CloudRain, network: MapIcon, dmc: LineChart,
+  thiessen: MapIcon, missing: Activity, storm: CloudRain, movavg: LineChart, risk: Calculator, idf: LineChart,
+  d8: Layers, hortonfit: Droplets, phiindex: Calculator, scscn: Calculator, pencalc: Wind
+};
+// Tools that have a real picture: save it as assets/img/workbench/<tool>.png and add the tool's key here.
+const TOOL_IMG = new Set();
+
+function ToolCard({ name, onOpen }) {
+  const I = TOOL_ICON[name] || Activity;
+  const title = DOCK_TOOLS[name];
+  return (
+    <div className="fb-toolcard">
+      <div className="fb-toolcard__thumb" aria-hidden="true">
+        {TOOL_IMG.has(name) ? <img src={"assets/img/workbench/" + name + ".png"} alt="" loading="lazy" /> : <I size={34} strokeWidth={1.5} />}
+      </div>
+      <div className="fb-toolcard__text">
+        <p className="fb-toolcard__kicker">Interactive workbench</p>
+        <p className="fb-toolcard__title">{title}</p>
+      </div>
+      <button type="button" className="fb-toolcard__open" onClick={onOpen} aria-label={"Open " + title + " in a pop-up window"} title="Open in a pop-up window">
+        <Code size={22} strokeWidth={2} aria-hidden="true" />
+      </button>
+    </div>
+  );
+}
 
 const Icon = ({ as: I, size = 18 }) => <I size={size} strokeWidth={2} aria-hidden="true" className="fb-icon" />;
 
@@ -154,13 +179,14 @@ function useProgress() {
 }
 
 /* ---------- Markdown block with live React widgets ---------- */
-// dock: { rail: HTMLElement, tab: number } — when given, interactive tools render into the
-// workbench rail (one slot per tool, tagged with its section) and leave a short note inline.
+// dock: { store: HTMLElement, tab: number, open: (slot) => void } — when given, interactive tools render
+// into a hidden store (one slot per tool, tagged with its section) and leave a card inline whose
+// button opens the tool in the pop-up window.
 function Content({ md, onHeads, dock, idPrefix = "" }) {
   const ref = useRef();
   const [mounts, setMounts] = useState([]);
   const html = useMemo(() => renderMd(md), [md]);
-  const rail = dock && dock.rail;
+  const store = dock && dock.store;
 
   useLayoutEffect(() => {
     if (!ref.current) return;
@@ -177,7 +203,7 @@ function Content({ md, onHeads, dock, idPrefix = "" }) {
     ref.current.querySelectorAll("h2, .wg-mount").forEach(el => {
       if (el.tagName === "H2") { section = { id: el.id, t: el.textContent }; return; }
       const name = el.dataset.w;
-      if (rail && DOCK_TOOLS[name]) {
+      if (store && DOCK_TOOLS[name]) {
         const slot = document.createElement("div");
         slot.className = "fb-tool";
         slot.dataset.section = section.id;
@@ -185,19 +211,20 @@ function Content({ md, onHeads, dock, idPrefix = "" }) {
         slot.dataset.sectionTitle = section.t;
         slot.dataset.tab = String(dock.tab);
         slot.hidden = true;
-        rail.appendChild(slot);
-        el.innerHTML = '<div class="fb-docked-note"><b>' + esc(DOCK_TOOLS[name]) + "</b>&nbsp;is open in the workbench beside this section.</div>";
+        store.appendChild(slot);
         list.push({ el: slot, name });
+        list.push({ el, name, card: slot });
       } else list.push({ el, name });
     });
     setMounts(list);
     return () => list.forEach(m => { if (m.el.classList.contains("fb-tool")) m.el.remove(); });
-  }, [html, rail]);
+  }, [html, store]);
 
   return (
     <>
       <div className="prose" ref={ref} />
       {mounts.map((m, i) => {
+        if (m.card) return createPortal(<ToolCard name={m.name} onOpen={() => dock.open(m.card)} />, m.el, i);
         const W = ALL_COMPONENTS[m.name];
         return createPortal(W ? <W /> : <div className="callout warn">Unknown widget: {m.name}</div>, m.el, i);
       })}
@@ -587,8 +614,7 @@ function SessionView({ data, id, preview, markVisited, visited }) {
   const src = useText(s && (s.enabled || preview) ? s.file : null);
   const [tab, setTab] = useState(0);
   const [heads, setHeads] = useState({});
-  const wide = useMedia("(min-width: 1180px)");
-  const [rail, setRail] = useState(null);
+  const [store, setStore] = useState(null);
   const [toolTick, setToolTick] = useState(0);
 
   useEffect(() => {
@@ -599,21 +625,9 @@ function SessionView({ data, id, preview, markVisited, visited }) {
 
   const active = useActiveSection(".fb-article", [id, tab, src, toolTick]);
 
-  // show only the tool for the section in view (and the current tab)
-  const [shownTool, setShownTool] = useState(null);
-  const [shownName, setShownName] = useState(null);
+  // the tool whose pop-up window is open, if any
   const [expanded, setExpanded] = useState(null);
-  useEffect(() => { setExpanded(null); }, [id, tab, wide]);
-  useEffect(() => {
-    if (expanded) return;
-    if (!rail) { setShownTool(null); setShownName(null); return; }
-    const slots = [...rail.querySelectorAll(".fb-tool")].filter(el => el.dataset.tab === String(tab));
-    const topId = "t" + tab + "-top";
-    const match = slots.find(el => el.dataset.section === (active || topId));
-    rail.querySelectorAll(".fb-tool").forEach(el => (el.hidden = el !== match));
-    setShownTool(match ? match.dataset.sectionTitle || "This session" : null);
-    setShownName(match ? match.dataset.tool : null);
-  });
+  useEffect(() => { setExpanded(null); }, [id, tab]);
 
   if (!s) return <div className="fb-session"><div className="fb-status fb-status--empty"><div><h3>Session not found</h3><p>Open the <a href="#/">Home page</a> to find the next session.</p></div></div></div>;
 
@@ -685,7 +699,7 @@ function SessionView({ data, id, preview, markVisited, visited }) {
                 <Content
                   md={p.md}
                   idPrefix={"t" + j + "-"}
-                  dock={wide && rail ? { rail, tab: j } : null}
+                  dock={store ? { store, tab: j, open: setExpanded } : null}
                   onHeads={h => { setHeads(o => ({ ...o, [j]: h })); setToolTick(x => x + 1); }}
                 />
               </div>
@@ -702,20 +716,9 @@ function SessionView({ data, id, preview, markVisited, visited }) {
         )}
       </article>
 
-      <aside className="fb-rail" aria-label="Workbench">
-        <div className="fb-workbench" hidden={!shownTool}>
-          <div className="fb-workbench__head">
-            <h2 className="fb-workbench__title">Workbench</h2>
-            <span className="fb-workbench__context">{shownTool}</span>
-          </div>
-          {shownName && EXPANDABLE.has(shownName) && (
-            <button className="fb-btn fb-btn--secondary fb-workbench__expand" onClick={() => { const slot = rail && rail.querySelector(".fb-tool:not([hidden])"); if (slot) setExpanded(slot); }}>
-              <Icon as={Maximize2} /> Open larger
-            </button>
-          )}
-          <div ref={setRail} />
-        </div>
-        {!shownTool && !locked && (
+      <div ref={setStore} hidden />
+      <aside className="fb-rail" aria-label="Labs and contents">
+        {!locked && (
           <>
             {openLabs.length > 0 && (
               <section className="fb-panel">
@@ -740,7 +743,7 @@ function SessionView({ data, id, preview, markVisited, visited }) {
           </>
         )}
       </aside>
-      {expanded && <ToolModal slot={expanded} home={rail} title={DOCK_TOOLS[expanded.dataset.tool] || "Workbench"} context={expanded.dataset.sectionTitle} onClose={() => setExpanded(null)} />}
+      {expanded && <ToolModal slot={expanded} home={store}title={DOCK_TOOLS[expanded.dataset.tool] || "Workbench"} context={expanded.dataset.sectionTitle} onClose={() => setExpanded(null)} />}
     </div>
   );
 }
@@ -761,6 +764,7 @@ function ToolModal({ slot, home, title, context, onClose }) {
     closeRef.current && closeRef.current.focus();
     return () => {
       if (home) home.appendChild(slot);
+      slot.hidden = true;
       document.documentElement.style.overflow = prevOverflow;
       if (prevFocus && prevFocus.focus) prevFocus.focus();
     };
