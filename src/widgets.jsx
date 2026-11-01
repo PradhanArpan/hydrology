@@ -1148,7 +1148,7 @@ function MapFrame({ m, children, label }) {
 }
 
 function SourceLine({ d }) {
-  return <p style={SRC_STYLE}>Source: {d.source}. Years: {d.years}. Licence: {d.licence}. Built {d.built}.</p>;
+  return <p style={SRC_STYLE}>Source: {d.source}{d.api && d.api.version ? `. Service: ${d.api.name} ${d.api.version}, accessed ${d.built}` : ""}. Years: {d.years}. Licence: {d.licence}. Built {d.built}.</p>;
 }
 
 function StatesBasins({ m }) {
@@ -1266,7 +1266,82 @@ function DamLayer({ m }) {
   );
 }
 
-const ATLAS_LAYERS = [["rivers", "Rivers"], ["bounds", "States and river basins"], ["rain", "Rainfall"], ["dams", "Dams and reservoirs"]];
+// Reanalysis layers (NASA POWER / MERRA-2): rectangular cells of dlon x dlat degrees, one value per cell (-1 = no data).
+const ET_COLORS = ["#fff5eb", "#fee6ce", "#fdd0a2", "#fdae6b", "#fd8d3c", "#f16913", "#d94801", "#a63603", "#7f2704"];   // single-hue (orange)
+const ET_CLASSES = [200, 400, 600, 800, 1000, 1200, 1350, 1500];
+const SM_COLORS = ["#f7fcf5", "#e5f5e0", "#c7e9c0", "#a1d99b", "#74c476", "#41ab5d", "#238b45", "#006d2c", "#00441b"];  // single-hue (green)
+const SM_CLASSES = [0.15, 0.25, 0.35, 0.45, 0.55, 0.65, 0.75, 0.85];
+function GridCells({ g, vals, classes, colors, textFor, setInfo }) {
+  const k = Math.cos(22 * Math.PI / 180) * 20, w = g.dlon * k, h = g.dlat * 20, out = [];
+  for (let r = 0; r < g.ny; r++) for (let c = 0; c < g.nx; c++) {
+    const v = vals[r * g.nx + c]; if (v < 0) continue;
+    const lon = g.lon0 + c * g.dlon, lat = g.lat0 + r * g.dlat, t = textFor(v, lat + g.dlat / 2, lon + g.dlon / 2);
+    out.push(<rect key={r * g.nx + c} x={(lon - 68) * k} y={(37.6 - lat - g.dlat) * 20} width={w + 0.3} height={h + 0.3} style={{ fill: colors[rainClass(v, classes)] }} onMouseEnter={() => setInfo(t)} onClick={() => setInfo(t)} />);
+  }
+  return out;
+}
+function GridLegend({ title, classes, colors, fmtv, unit }) {
+  const lo = i => (i === 0 ? fmtv(0) : fmtv(classes[i - 1])), hi = i => (i === classes.length ? null : fmtv(classes[i]));
+  return (
+    <div className="atlas-legend" role="list" aria-label={title + " classes"}>
+      <div className="note"><b>{title}</b> ({unit})</div>
+      {colors.map((c, i) => <div role="listitem" key={i} className="atlas-legend__row"><span className="atlas-legend__sw" style={{ background: c }} /> {hi(i) ? `${lo(i)} – ${hi(i)}` : `${lo(i)} and above`}</div>)}
+    </div>
+  );
+}
+const place = (lat, lon) => `cell at ${lat.toFixed(2)}°N, ${lon.toFixed(2)}°E`;
+
+function EvapLayer({ m }) {
+  const d = useAtlasLayer("evaporation");
+  const [info, setInfo] = useState(null);
+  if (d === false) return <p>Layer data could not load.</p>;
+  if (!d) return <p>Loading evaporation…</p>;
+  return (
+    <div className="wg-row">
+      <div className="wg-col" style={{ flex: "1 1 360px" }}>
+        <MapFrame m={m} label="Annual land evaporation across India">{clip => <g clipPath={`url(#${clip})`}><GridCells g={d.grid} vals={d.annual} classes={ET_CLASSES} colors={ET_COLORS} setInfo={setInfo} textFor={(v, la, lo) => `Annual land evaporation: ${fmt(v)} mm per year (${place(la, lo)})`} /></g>}</MapFrame>
+        <p className="note" aria-live="polite" style={{ minHeight: 22 }}>{info || "Hover or tap a cell to read its evaporation."}</p>
+      </div>
+      <div className="wg-col" style={{ flex: "1 1 280px" }}>
+        <GridLegend title="Annual land evaporation" classes={ET_CLASSES} colors={ET_COLORS} fmtv={fmt} unit="mm per year" />
+        <p className="note"><b>Reanalysis, not a measurement.</b> These values come from a weather-and-land model (NASA MERRA-2) that is constrained by observations; they are good for comparing regions, not for exact local totals. Evaporation here includes transpiration from land.</p>
+        <p className="note" style={{ fontSize: 12 }}>Cells are about 0.5° × 0.625° (roughly 55 × 65 km). The map shows the daily mean times 365.</p>
+        <SourceLine d={d} />
+      </div>
+    </div>
+  );
+}
+
+function SoilLayer({ m }) {
+  const d = useAtlasLayer("soilmoisture");
+  const [mode, setMode] = useState("annual");
+  const [info, setInfo] = useState(null);
+  if (d === false) return <p>Layer data could not load.</p>;
+  if (!d) return <p>Loading soil moisture…</p>;
+  const names = { annual: "Annual mean", monsoon: "Monsoon (June–September)", dry: "Dry season (December–May)" };
+  const f2 = v => v.toFixed(2);
+  return (
+    <div className="wg-row">
+      <div className="wg-col" style={{ flex: "1 1 360px" }}>
+        <MapFrame m={m} label={"Surface soil moisture across India, " + names[mode]}>{clip => <g clipPath={`url(#${clip})`}><GridCells g={d.grid} vals={d[mode]} classes={SM_CLASSES} colors={SM_COLORS} setInfo={setInfo} textFor={(v, la, lo) => `Surface soil wetness, ${names[mode].replace(/^./, c => c.toLowerCase())}: ${v.toFixed(2)} of saturation (${place(la, lo)})`} /></g>}</MapFrame>
+        <p className="note" aria-live="polite" style={{ minHeight: 22 }}>{info || "Hover or tap a cell to read its soil wetness."}</p>
+      </div>
+      <div className="wg-col" style={{ flex: "1 1 280px" }}>
+        <fieldset style={{ border: 0, padding: 0, margin: "0 0 8px" }}><legend className="note">Period</legend>
+          <div role="radiogroup" className="atlas-seg">
+            {Object.entries(names).map(([k, t]) => <label key={k} className={"atlas-seg__opt" + (mode === k ? " is-on" : "")}><input type="radio" name="atlas-soil" value={k} checked={mode === k} onChange={() => setMode(k)} /> {t}</label>)}
+          </div>
+        </fieldset>
+        <GridLegend title="Surface soil wetness" classes={SM_CLASSES} colors={SM_COLORS} fmtv={f2} unit="fraction of saturation, 0 to 1" />
+        <p className="note"><b>Reanalysis, not a measurement.</b> Soil wetness is the share of the soil's pore space that is filled (1 = saturated), for the top layer of a model (NASA MERRA-2). It is not volumetric water content in m³/m³; for that, see satellite products such as ISRO's EOS-04.</p>
+        <p className="note" style={{ fontSize: 12 }}>Cells are about 0.5° × 0.625°. Compare the monsoon and dry-season views to see where the soil dries out.</p>
+        <SourceLine d={d} />
+      </div>
+    </div>
+  );
+}
+
+const ATLAS_LAYERS = [["rivers", "Rivers"], ["bounds", "States and river basins"], ["rain", "Rainfall"], ["evap", "Evaporation"], ["soil", "Soil moisture"], ["dams", "Dams and reservoirs"]];
 function WaterAtlas() {
   const [m, setM] = useState(null);
   const [layer, setLayer] = useState("rivers");
@@ -1291,7 +1366,7 @@ function WaterAtlas() {
         </div>
       </fieldset>
       {m === false ? <p>Map data could not load.</p> : !m ? <p>Loading map…</p> :
-        layer === "rivers" ? <RiversLayer m={m} /> : layer === "bounds" ? <StatesBasins m={m} /> : layer === "rain" ? <RainLayer m={m} /> : <DamLayer m={m} />}
+        layer === "rivers" ? <RiversLayer m={m} /> : layer === "bounds" ? <StatesBasins m={m} /> : layer === "rain" ? <RainLayer m={m} /> : layer === "evap" ? <EvapLayer m={m} /> : layer === "soil" ? <SoilLayer m={m} /> : <DamLayer m={m} />}
     </Box>
   );
 }

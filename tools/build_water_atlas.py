@@ -2,7 +2,7 @@
 
 Run from the repository root:
     python tools/build_water_atlas.py                 # every layer that can be built
-    python tools/build_water_atlas.py --layer dams    # one layer (states, basins, rainfall, dams)
+    python tools/build_water_atlas.py --layer dams    # one layer (states, basins, rainfall, dams, evaporation, soilmoisture)
 
 Raw downloads go to the git-ignored raw/ folder. See data/README.md for the sources, licences and rebuild steps.
 Every layer file carries: source, licence, years, built, plus its data. Coordinates use the same projection
@@ -14,6 +14,7 @@ Raw inputs expected in raw/ (the download commands are in data/README.md):
     wris_basins.geojson                    India-WRIS Common/Basin_WRP layer 0 (CWC basins)
     wris_dams.json                         India-WRIS DataDownload/Water_Resource_Project_Data layer 3 (National Register of Large Dams)
     imd/rain/*.grd                         IMD 0.25 deg daily rainfall 1991-2020 (imdlib)
+    power/*.json                           NASA POWER point climatologies (fetched by the script, cached here)
 """
 import argparse, datetime, json, math, os, re, sys
 import numpy as np
@@ -208,13 +209,109 @@ def build_dams():
     write("dams", out)
 
 
-LAYERS = {"states": build_states, "basins": build_basins, "rainfall": build_rainfall, "dams": build_dams}
+
+# ---------------------------------------------------------------- evaporation and soil wetness (NASA POWER, MERRA-2 reanalysis)
+POWER_URL = ("https://power.larc.nasa.gov/api/temporal/climatology/point?parameters=EVLAND,GWETTOP&community=AG"
+             "&longitude={lon}&latitude={lat}&format=JSON&start=1991&end=2020")
+MERRA_DLAT, MERRA_DLON = 0.5, 0.625              # native MERRA-2 grid; cell centres at lat -90 + 0.5 i, lon -180 + 0.625 j
+MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"]
+
+
+def power_grid():
+    """Rows/cols of MERRA-2 cells whose centre lies in India (buffered by 0.3 deg)."""
+    from shapely.geometry import Point
+    ind = india().buffer(0.3)
+    lat_i = [i for i in range(round((5.5 + 90) / MERRA_DLAT), round((38 + 90) / MERRA_DLAT) + 1)]
+    lon_j = [j for j in range(round((66 + 180) / MERRA_DLON), round((98.5 + 180) / MERRA_DLON) + 1)]
+    return lat_i, lon_j, ind, Point
+
+
+def fetch_power():
+    import requests, concurrent.futures as cf, time
+    os.makedirs(f"{RAW}/power", exist_ok=True)
+    lat_i, lon_j, ind, Point = power_grid()
+    todo = []
+    for i in lat_i:
+        for j in lon_j:
+            lat, lon = -90 + MERRA_DLAT * i, -180 + MERRA_DLON * j
+            if ind.contains(Point(lon, lat)):
+                todo.append((i, j, lat, lon))
+
+    def get(t):
+        i, j, lat, lon = t
+        f = f"{RAW}/power/{i}_{j}.json"
+        if os.path.exists(f):
+            return t, json.load(open(f))
+        for attempt in range(5):
+            try:
+                r = requests.get(POWER_URL.format(lat=lat, lon=lon), timeout=60)
+                if r.status_code == 200:
+                    d = r.json()
+                    json.dump({"parameter": d["properties"]["parameter"], "header": d["header"]}, open(f, "w"))
+                    return t, json.load(open(f))
+            except Exception:
+                pass
+            time.sleep(2 + attempt * 3)
+        return t, None
+
+    out = {}
+    with cf.ThreadPoolExecutor(4) as ex:
+        for n, (t, d) in enumerate(ex.map(get, todo), 1):
+            out[(t[0], t[1])] = d
+            if n % 200 == 0:
+                print("  POWER points", n, "of", len(todo), flush=True)
+    missing = [k for k, v in out.items() if v is None]
+    print("POWER points:", len(todo), "| failed:", len(missing))
+    return lat_i, lon_j, out
+
+
+def power_layer(name, value_fn, unit, source, extra):
+    lat_i, lon_j, pts = fetch_power()
+    hdr = next(v for v in pts.values() if v)["header"]
+    arrs = {k: [] for k in extra["series"]}
+    flat = {k: [] for k in extra["series"]}
+    for i in lat_i:                                    # south to north
+        for j in lon_j:
+            d = pts.get((i, j))
+            vals = value_fn(d["parameter"]) if d else None
+            for k in extra["series"]:
+                v = None if vals is None else vals[k]
+                flat[k].append(-1 if v is None or v < 0 else round(v, extra["round"]))
+    out = {"source": source, "licence": "NASA POWER data are open; NASA asks that publications cite the service, version and access date, and notifies of redistribution (see data/README.md)",
+           "years": hdr.get("range", "1991-2020"), "built": BUILT, "unit": unit, "api": hdr.get("api", {}), "dataSource": hdr.get("sources"),
+           "grid": {"lon0": round(-180 + MERRA_DLON * (lon_j[0] - 0.5), 4), "lat0": -90 + MERRA_DLAT * (lat_i[0] - 0.5), "dlon": MERRA_DLON, "dlat": MERRA_DLAT, "nx": len(lon_j), "ny": len(lat_i)}}
+    out.update(flat)
+    write(name, out)
+    for k, v in flat.items():
+        a = np.array(v); a = a[a >= 0]
+        print(f"  {k}: {len(a)} cells with data, range {a.min():g} - {a.max():g}, mean {a.mean():.3g}")
+
+
+def build_evaporation():
+    # EVLAND is land evaporation in mm/day; annual total = mean daily value x 365
+    power_layer("evaporation", lambda p: {"annual": (p["EVLAND"]["ANN"] * 365 if p["EVLAND"]["ANN"] > -900 else None)}, "mm per year",
+                "NASA POWER 30-year climatology, parameter EVLAND (Evaporation Land) from the MERRA-2 reanalysis (reanalysis, not a measurement); about 0.5 x 0.625 degree cells",
+                {"series": ["annual"], "round": 0})
+
+
+def build_soilmoisture():
+    # GWETTOP is surface soil wetness, a 0-1 fraction of saturation (not volumetric m3/m3)
+    def f(p):
+        g = p["GWETTOP"]
+        if g["ANN"] < -900:
+            return {"annual": None, "monsoon": None, "dry": None}
+        mean = lambda ms: sum(g[m] for m in ms) / len(ms)
+        return {"annual": g["ANN"], "monsoon": mean(["JUN", "JUL", "AUG", "SEP"]), "dry": mean(["DEC", "JAN", "FEB", "MAR", "APR", "MAY"])}
+    power_layer("soilmoisture", f, "fraction of saturation (0-1)",
+                "NASA POWER 30-year climatology, parameter GWETTOP (Surface Soil Wetness) from the MERRA-2 reanalysis (reanalysis, not a measurement); about 0.5 x 0.625 degree cells",
+                {"series": ["annual", "monsoon", "dry"], "round": 3})
+
+
+LAYERS = {"states": build_states, "basins": build_basins, "rainfall": build_rainfall, "dams": build_dams, "evaporation": build_evaporation, "soilmoisture": build_soilmoisture}
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("--layer", choices=list(LAYERS) + ["evaporation", "soilmoisture"])
+    ap.add_argument("--layer", choices=list(LAYERS))
     a = ap.parse_args()
-    if a.layer in ("evaporation", "soilmoisture"):
-        sys.exit("Evaporation and soil moisture need ERA5-Land monthly means 1991-2020 from Copernicus CDS (an account and API key) - not built yet. See data/README.md.")
     for name in ([a.layer] if a.layer else LAYERS):
         LAYERS[name]()
