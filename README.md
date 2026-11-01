@@ -46,6 +46,7 @@ labs/Lxx.md         software labs (step-by-step with real screenshots)
 software/           quick start guides for HEC-HMS, QGIS, HEC-RAS, HEC-SSP
 pages/              course pages (software setup, PBL guide, assessment, references)
 data/               synthetic teaching datasets
+data/atlas/         real-data layers of the Water atlas (states, basins, rainfall, dams); rebuilt by tools/build_water_atlas.py
 assets/img/labs/    real software screenshots and diagrams
 assets/app.js       built bundle (React 18 single-page application)
 assets/style.css    custom CSS theme variables, print rules, search modal, responsive layouts

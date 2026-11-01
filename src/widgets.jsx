@@ -1074,19 +1074,15 @@ const BASIN19 = [
   ["Sabarmati", 12.96, null], ["Pennar", 11.02, "#90be6d"],
 ];
 const B_TOTAL = 1999.2;
-function IndiaMap() {
-  const [m, setM] = useState(null);
+function RiversLayer({ m }) {
   const [sel, setSel] = useState(null);
   const [hov, setHov] = useState(null);
   const [labels, setLabels] = useState(true);
-  useEffect(() => { fetch("data/india_map.json").then(r => r.json()).then(setM).catch(() => setM(false)); }, []);
   const col = Object.fromEntries(BASIN19.filter(b => b[2]).map(b => [b[0], b[2]]));
   const selB = BASIN19.find(b => b[0] === sel);
   const named = useMemo(() => { if (!m) return []; const seen = {}; return m.rivers.filter(r => r.r <= 7 && !seen[r.n] && (seen[r.n] = 1)); }, [m]);
-  if (m === false) return <Box title="India's rivers and water resources">Map data could not load.</Box>;
-  if (!m) return <Box title="India's rivers and water resources">Loading map…</Box>;
   const mid = d => { const a = d.split(/[ML]/).filter(Boolean); const p = a[Math.floor(a.length * 0.62)].split(" ").map(Number); return p; };
-  return <Box title="India's rivers and water resources" kind="Interactive map">
+  return (
     <div className="wg-row">
       <div className="wg-col" style={{ flex: "1 1 360px", position: "relative" }}>
         <svg viewBox={`-10 -10 ${m.w + 20} ${m.h + 20}`} style={{ background: "#eef5f8", borderRadius: 8, border: "1px solid #dfe8ec" }}>
@@ -1098,7 +1094,7 @@ function IndiaMap() {
         </svg>
         {hov && <div className="note" style={{ position: "absolute", left: 10, top: 8, background: "#fff", padding: "4px 8px", borderRadius: 6, boxShadow: "0 1px 4px rgba(0,0,0,.15)" }}><b>{hov.n}</b> · {hov.b} basin</div>}
         <label className="note" style={{ display: "flex", gap: 6, alignItems: "center" }}><input type="checkbox" checked={labels} onChange={e => setLabels(e.target.checked)} /> River names</label>
-        <p className="note" style={{ fontSize: 11 }}>{m.credit} Rivers shown are the major ones only; basin boundaries are not drawn — see India-WRIS for those.</p>
+        <p className="note" style={{ fontSize: 11 }}>{m.credit} Rivers shown are the major ones only; basin boundaries are on the "States and river basins" layer.</p>
       </div>
       <div className="wg-col" style={{ flex: "1 1 300px" }}>
         {selB ? <div className="kpis"><Kpi v={selB[1].toFixed(1) + " km³"} l={selB[0] + " — average annual potential"} /><Kpi v={(selB[1] / B_TOTAL * 100).toFixed(1) + " %"} l="Share of India's total" tone="good" /></div>
@@ -1113,11 +1109,196 @@ function IndiaMap() {
         <p className="note" style={{ fontSize: 11 }}>km³ = billion m³ (BCM). Source: CWC (2019), <i>Reassessment of Water Availability in India using Space Inputs</i>. WFR/EFR = west/east-flowing rivers.</p>
       </div>
     </div>
-  </Box>;
+  );
+}
+
+/* ============ S01: Water atlas of India (layer switcher over the rivers map) ============ */
+const ATLAS_CACHE = {};
+function useAtlasLayer(name) {                       // each layer's JSON loads on first use, then stays cached
+  const [d, setD] = useState(ATLAS_CACHE[name] || null);
+  useEffect(() => {
+    if (!name || ATLAS_CACHE[name]) { setD(name ? ATLAS_CACHE[name] : null); return; }
+    let live = true;
+    setD(null);
+    fetch("data/atlas/" + name + ".json").then(r => r.json()).then(j => { ATLAS_CACHE[name] = j; if (live) setD(j); }).catch(() => { if (live) setD(false); });
+    return () => { live = false; };
+  }, [name]);
+  return d;
+}
+const fmt = n => Math.round(n).toLocaleString("en-IN");
+// Single-hue (blue) sequential classes, colour-blind safe. Upper bounds are in mm.
+const RAIN_COLORS = ["#eff3ff", "#d6e6f5", "#b5d3ea", "#8dbbdc", "#639fcc", "#3f82bb", "#2564a2", "#124684", "#08306b"];
+const RAIN_CLASSES = { annual: [300, 600, 900, 1200, 1600, 2000, 2800, 4000], jjas: [100, 250, 450, 700, 1000, 1400, 2000, 3000] };
+const rainClass = (v, cl) => { let i = 0; while (i < cl.length && v >= cl[i]) i++; return i; };
+const DAM_COLORS = ["#8a8f98", "#0072b2", "#d55e00", "#009e73"];       // type not stated, earthen, rockfill, other (Okabe–Ito)
+const BASIN_TINTS = ["#dbe9f2", "#f1e4c9", "#d7ead9", "#ead9ee", "#f3d9d3", "#dcdff0", "#e8ecc9"];
+const INK = { fill: "var(--text)" };
+const SRC_STYLE = { fontSize: 12, color: "var(--text-muted)", marginTop: 8 };
+
+function MapFrame({ m, children, label }) {
+  const clip = "atlas-clip";
+  return (
+    <svg viewBox={`-10 -10 ${m.w + 20} ${m.h + 20}`} role="img" aria-label={label} style={{ background: "var(--river-tint)", borderRadius: 8, border: "1px solid var(--rule)", width: "100%", height: "auto" }}>
+      <defs><clipPath id={clip}>{m.outline.map((d, i) => <path key={i} d={d} />)}</clipPath></defs>
+      {m.outline.map((d, i) => <path key={i} d={d} style={{ fill: "var(--surface)" }} />)}
+      {children(clip)}
+      {m.outline.map((d, i) => <path key={"o" + i} d={d} fill="none" style={{ stroke: "var(--text-muted)" }} strokeWidth="0.9" strokeLinejoin="round" />)}
+    </svg>
+  );
+}
+
+function SourceLine({ d }) {
+  return <p style={SRC_STYLE}>Source: {d.source}. Years: {d.years}. Licence: {d.licence}. Built {d.built}.</p>;
+}
+
+function StatesBasins({ m }) {
+  const st = useAtlasLayer("states"), ba = useAtlasLayer("basins");
+  const [showS, setShowS] = useState(true), [showB, setShowB] = useState(true);
+  const [info, setInfo] = useState(null);
+  if (st === false || ba === false) return <p>Layer data could not load.</p>;
+  if (!st || !ba) return <p>Loading states and basins…</p>;
+  const names = ba.basins.map(b => b.n);
+  return (
+    <div className="wg-row">
+      <div className="wg-col" style={{ flex: "1 1 360px" }}>
+        <MapFrame m={m} label="Map of India with state boundaries and river basins">{clip => <>
+          {showB && <g clipPath={`url(#${clip})`}>{ba.basins.map((b, i) => <path key={b.n} d={b.d} fillOpacity="0.85" style={{ fill: BASIN_TINTS[i % BASIN_TINTS.length], stroke: "var(--river)", strokeWidth: 1.1 }} onMouseEnter={() => setInfo("Basin: " + b.n)} onClick={() => setInfo("Basin: " + b.n)} />)}</g>}
+          {showS && <g>{st.states.map(s => <path key={s.n} d={s.d} fill={showB ? "none" : "transparent"} style={{ stroke: "var(--text)" }} strokeWidth="0.55" strokeDasharray={showB ? "2.2 1.6" : null} strokeLinejoin="round" onMouseEnter={() => setInfo("State: " + s.n)} onClick={() => setInfo("State: " + s.n)} pointerEvents={showB ? "none" : "all"} />)}</g>}
+        </>}</MapFrame>
+        <p className="note" aria-live="polite" style={{ minHeight: 22 }}>{info || "Hover or tap an area to read its name."}</p>
+      </div>
+      <div className="wg-col" style={{ flex: "1 1 280px" }}>
+        <div className="kpis"><Kpi v={st.states.length} l="states and union territories" /><Kpi v={ba.basins.length} l="CWC river basins and basin groups" /></div>
+        <fieldset style={{ border: 0, padding: 0, margin: "8px 0" }}><legend className="note">Show</legend>
+          <label className="atlas-check"><input type="checkbox" checked={showB} onChange={e => setShowB(e.target.checked)} /> River basins (coloured areas, solid river-blue outline)</label>
+          <label className="atlas-check"><input type="checkbox" checked={showS} onChange={e => setShowS(e.target.checked)} /> State boundaries (dashed dark lines)</label>
+        </fieldset>
+        <p className="note">States and basins are different lines: a basin follows the divide between drainage areas and crosses state borders, so most rivers flow through several states.</p>
+        <p className="note" style={{ fontSize: 12 }}>Basins: {names.join(", ")}.</p>
+        <SourceLine d={ba} /><SourceLine d={st} />
+      </div>
+    </div>
+  );
+}
+
+function RainLayer({ m }) {
+  const rf = useAtlasLayer("rainfall");
+  const [mode, setMode] = useState("annual");
+  const [info, setInfo] = useState(null);
+  if (rf === false) return <p>Layer data could not load.</p>;
+  if (!rf) return <p>Loading rainfall…</p>;
+  const g = rf.grid, cl = RAIN_CLASSES[mode], vals = rf[mode];
+  const sx = (lon) => (lon - 68) * Math.cos(22 * Math.PI / 180) * 20, sy = (lat) => (37.6 - lat) * 20;
+  const w = g.step * Math.cos(22 * Math.PI / 180) * 20, h = g.step * 20;
+  const lo = i => (i === 0 ? "0" : fmt(cl[i - 1])), hi = i => (i === cl.length ? null : fmt(cl[i]));
+  const label = mode === "annual" ? "Mean annual rainfall" : "Mean June–September (monsoon) rainfall";
+  const cells = [];
+  for (let r = 0; r < g.ny; r++) for (let c = 0; c < g.nx; c++) {
+    const v = vals[r * g.nx + c]; if (v < 0) continue;
+    const lon = g.lon0 + c * g.step, lat = g.lat0 + r * g.step;
+    cells.push(<rect key={r * g.nx + c} x={sx(lon)} y={sy(lat + g.step)} width={w + 0.3} height={h + 0.3} style={{ fill: RAIN_COLORS[rainClass(v, cl)] }}
+      onMouseEnter={() => setInfo(`${label}: ${fmt(v)} mm (cell at ${(lat + g.step / 2).toFixed(2)}°N, ${(lon + g.step / 2).toFixed(2)}°E)`)} onClick={() => setInfo(`${label}: ${fmt(v)} mm (cell at ${(lat + g.step / 2).toFixed(2)}°N, ${(lon + g.step / 2).toFixed(2)}°E)`)} />);
+  }
+  return (
+    <div className="wg-row">
+      <div className="wg-col" style={{ flex: "1 1 360px" }}>
+        <MapFrame m={m} label={label + " across India"}>{clip => <g clipPath={`url(#${clip})`}>{cells}</g>}</MapFrame>
+        <p className="note" aria-live="polite" style={{ minHeight: 22 }}>{info || "Hover or tap a cell to read its rainfall."}</p>
+      </div>
+      <div className="wg-col" style={{ flex: "1 1 280px" }}>
+        <fieldset style={{ border: 0, padding: 0, margin: "0 0 8px" }}><legend className="note">Rainfall period</legend>
+          <div role="radiogroup" className="atlas-seg">
+            {[["annual", "Annual"], ["jjas", "June–September"]].map(([k, t]) => <label key={k} className={"atlas-seg__opt" + (mode === k ? " is-on" : "")}><input type="radio" name="atlas-rain" value={k} checked={mode === k} onChange={() => setMode(k)} /> {t}</label>)}
+          </div>
+        </fieldset>
+        <div className="atlas-legend" role="list" aria-label={label + " classes in millimetres"}>
+          <div className="note"><b>{label}</b> (mm)</div>
+          {RAIN_COLORS.map((c, i) => <div role="listitem" key={i} className="atlas-legend__row"><span className="atlas-legend__sw" style={{ background: c }} /> {hi(i) ? `${lo(i)} – ${hi(i)}` : `${lo(i)} and above`} mm</div>)}
+        </div>
+        <p className="note">India's rain is a monsoon rain: about {Math.round(100 * rf.jjas.filter((v, i) => v >= 0 && rf.annual[i] >= 0).reduce((s, v) => s + v, 0) / rf.annual.filter(v => v >= 0).reduce((s, v) => s + v, 0))} % of the annual total falls in June–September. Compare the two views.</p>
+        <p className="note" style={{ fontSize: 12 }}>Each cell is 0.5° × 0.5° (about 55 km), the average of IMD's 0.25° grid cells and of {rf.years} (30 years).</p>
+        <SourceLine d={rf} />
+      </div>
+    </div>
+  );
+}
+
+function DamLayer({ m }) {
+  const dm = useAtlasLayer("dams");
+  const [minCap, setMinCap] = useState(0);
+  const [info, setInfo] = useState(null);
+  const pts = useMemo(() => {
+    if (!dm) return [];
+    const out = [];
+    for (let i = 0; i < dm.name.length; i++) if (dm.cap[i] >= minCap || (minCap === 0)) out.push(i);
+    return out;
+  }, [dm, minCap]);
+  if (dm === false) return <p>Layer data could not load.</p>;
+  if (!dm) return <p>Loading dams…</p>;
+  const radius = c => (c < 0 ? 1.1 : 1.1 + Math.sqrt(c) * 0.055);
+  const text = i => {
+    const t = dm.types[dm.ty[i]];
+    return `${dm.name[i] || "Unnamed dam"} · ${dm.stateNames[dm.states[dm.st[i]]] || dm.states[dm.st[i]]} · river ${dm.rivers[dm.rv[i]] || "not stated"}, ${dm.basins[dm.ba[i]] || "basin not stated"} basin · ${t} · height ${dm.h[i] >= 0 ? dm.h[i] + " m" : "not stated"} · gross storage ${dm.cap[i] >= 0 ? fmt(dm.cap[i]) + " MCM" : "not stated"} · completed ${dm.yr[i] || "year not stated"}`;
+  };
+  const total = pts.reduce((s, i) => s + (dm.cap[i] > 0 ? dm.cap[i] : 0), 0);
+  return (
+    <div className="wg-row">
+      <div className="wg-col" style={{ flex: "1 1 360px" }}>
+        <MapFrame m={m} label="Map of large dams and reservoirs in India">{() => <g>{pts.map(i => <circle key={i} cx={dm.x[i]} cy={dm.y[i]} r={radius(dm.cap[i])} fillOpacity="0.62" style={{ fill: DAM_COLORS[dm.ty[i]], stroke: "var(--surface)", strokeWidth: 0.25 }} onMouseEnter={() => setInfo(text(i))} onClick={() => setInfo(text(i))} />)}</g>}</MapFrame>
+        <p className="note" aria-live="polite" style={{ minHeight: 44 }}>{info || "Hover or tap a dot to read the dam's name, state, river, type, height, gross storage and year."}</p>
+      </div>
+      <div className="wg-col" style={{ flex: "1 1 280px" }}>
+        <div className="kpis"><Kpi v={fmt(pts.length)} l="dams shown" /><Kpi v={(total / 1000).toFixed(0) + " km³"} l="total gross storage shown" /></div>
+        <label className="note" htmlFor="atlas-mincap" style={{ display: "block", marginTop: 8 }}>Show dams with gross storage of at least</label>
+        <select id="atlas-mincap" value={minCap} onChange={e => setMinCap(+e.target.value)} className="atlas-select">
+          <option value={0}>Any size (all dams)</option><option value={10}>10 MCM</option><option value={100}>100 MCM</option><option value={1000}>1,000 MCM</option>
+        </select>
+        <div className="atlas-legend" role="list" aria-label="Dam type colours">
+          <div className="note"><b>Colour: dam type</b></div>
+          {dm.types.map((t, i) => <div role="listitem" key={t} className="atlas-legend__row"><span className="atlas-legend__sw atlas-legend__sw--dot" style={{ background: DAM_COLORS[i] }} /> {t}</div>)}
+          <div className="note" style={{ marginTop: 6 }}><b>Size: gross storage</b> (MCM = million m³)</div>
+          {[10, 100, 1000, 10000].map(c => <div role="listitem" key={c} className="atlas-legend__row"><svg width="22" height="22" aria-hidden="true"><circle cx="11" cy="11" r={Math.min(10.5, radius(c) * 1.7)} style={{ fill: "var(--text-muted)" }} fillOpacity="0.55" /></svg> {fmt(c)} MCM</div>)}
+        </div>
+        <p className="note" style={{ fontSize: 12 }}>{fmt(dm.plotted)} of {fmt(dm.total)} register entries have coordinates and are plotted ({dm.noCoordinates} without). {dm.capacityOutliers} entries list a storage above {fmt(dm.maxCapacityMCM)} MCM, more than the largest Indian reservoir, so their storage is shown as "not stated". Check any figure against CWC before quoting it.</p>
+        <SourceLine d={dm} />
+      </div>
+    </div>
+  );
+}
+
+const ATLAS_LAYERS = [["rivers", "Rivers"], ["bounds", "States and river basins"], ["rain", "Rainfall"], ["dams", "Dams and reservoirs"]];
+function WaterAtlas() {
+  const [m, setM] = useState(null);
+  const [layer, setLayer] = useState("rivers");
+  useEffect(() => { fetch("data/india_map.json").then(r => r.json()).then(setM).catch(() => setM(false)); }, []);
+  const radios = useRef([]);
+  const onKey = (e, j) => {
+    const n = ATLAS_LAYERS.length; let k = null;
+    if (e.key === "ArrowDown" || e.key === "ArrowRight") k = (j + 1) % n;
+    if (e.key === "ArrowUp" || e.key === "ArrowLeft") k = (j - 1 + n) % n;
+    if (k === null) return;
+    e.preventDefault(); setLayer(ATLAS_LAYERS[k][0]); radios.current[k] && radios.current[k].focus();
+  };
+  return (
+    <Box title="Water atlas of India" kind="Interactive map">
+      <fieldset className="atlas-layers"><legend className="atlas-layers__legend">Map layer</legend>
+        <div role="radiogroup" className="atlas-layers__group">
+          {ATLAS_LAYERS.map(([k, t], j) => (
+            <label key={k} className={"atlas-layers__opt" + (layer === k ? " is-on" : "")}>
+              <input ref={el => (radios.current[j] = el)} type="radio" name="atlas-layer" value={k} checked={layer === k} onChange={() => setLayer(k)} onKeyDown={e => onKey(e, j)} /> {t}
+            </label>
+          ))}
+        </div>
+      </fieldset>
+      {m === false ? <p>Map data could not load.</p> : !m ? <p>Loading map…</p> :
+        layer === "rivers" ? <RiversLayer m={m} /> : layer === "bounds" ? <StatesBasins m={m} /> : layer === "rain" ? <RainLayer m={m} /> : <DamLayer m={m} />}
+    </Box>
+  );
 }
 
 export const WIDGETS = {
-  indiamap: IndiaMap,
+  indiamap: WaterAtlas,
+  wateratlas: WaterAtlas,
   abstractions: Abstractions,
   dalton: Dalton,
   ...ILLOS,

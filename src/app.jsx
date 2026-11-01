@@ -4,7 +4,7 @@ import { createPortal } from "react-dom";
 import { renderMd, enhance, esc } from "./md.js";
 import { WIDGETS } from "./widgets.jsx";
 import { ILLOS } from "./illos.jsx";
-import { Menu, Search, Sun, Moon, X, Check, Printer, Lock, FlaskConical, ChevronRight, Code, Calculator, CloudRain, Droplets, Activity, LineChart, Layers, Map as MapIcon, Wind } from "lucide-react";
+import { Menu, Search, Sun, Moon, X, Check, Printer, Lock, FlaskConical, ChevronRight, SquareArrowOutUpRight, Calculator, CloudRain, Droplets, Activity, LineChart, Layers, Map as MapIcon, Wind } from "lucide-react";
 
 const ALL_COMPONENTS = { ...ILLOS, ...WIDGETS };
 
@@ -26,17 +26,19 @@ const DOCK_TOOLS = {
   hortonfit: "Horton's infiltration model",
   phiindex: "φ-index and W-index finder",
   scscn: "SCS Curve Number calculator",
-  pencalc: "Evapotranspiration calculator"
+  pencalc: "Evapotranspiration calculator",
+  indiamap: "Water atlas of India",
+  wateratlas: "Water atlas of India"
 };
 
 // Icon shown on a tool's placeholder picture until a real screenshot exists.
 const TOOL_ICON = {
   waterbudget: Calculator, abstractions: Droplets, dalton: Wind, tipping: CloudRain, network: MapIcon, dmc: LineChart,
   thiessen: MapIcon, missing: Activity, storm: CloudRain, movavg: LineChart, risk: Calculator, idf: LineChart,
-  d8: Layers, hortonfit: Droplets, phiindex: Calculator, scscn: Calculator, pencalc: Wind
+  d8: Layers, hortonfit: Droplets, phiindex: Calculator, scscn: Calculator, pencalc: Wind, indiamap: MapIcon, wateratlas: MapIcon
 };
-// Tools that have a real picture: save it as assets/img/workbench/<tool>.png and add the tool's key here.
-const TOOL_IMG = new Set();
+// Tools that have a real picture (a screenshot of the tool): assets/img/workbench/<tool>.webp. Regenerate with tools/tool_shots.py.
+const TOOL_IMG = new Set(Object.keys(DOCK_TOOLS));
 
 function ToolCard({ name, onOpen }) {
   const I = TOOL_ICON[name] || Activity;
@@ -44,14 +46,14 @@ function ToolCard({ name, onOpen }) {
   return (
     <div className="fb-toolcard">
       <div className="fb-toolcard__thumb" aria-hidden="true">
-        {TOOL_IMG.has(name) ? <img src={"assets/img/workbench/" + name + ".png"} alt="" loading="lazy" /> : <I size={34} strokeWidth={1.5} />}
+        {TOOL_IMG.has(name) ? <img src={"assets/img/workbench/" + name + ".webp"} alt="" loading="lazy" width="320" height="240" /> : <I size={34} strokeWidth={1.5} />}
       </div>
       <div className="fb-toolcard__text">
         <p className="fb-toolcard__kicker">Interactive workbench</p>
         <p className="fb-toolcard__title">{title}</p>
       </div>
       <button type="button" className="fb-toolcard__open" onClick={onOpen} aria-label={"Open " + title + " in a pop-up window"} title="Open in a pop-up window">
-        <Code size={22} strokeWidth={2} aria-hidden="true" />
+        <SquareArrowOutUpRight size={20} strokeWidth={2} aria-hidden="true" />
       </button>
     </div>
   );
@@ -1316,6 +1318,8 @@ function App() {
 
   if (err) return <div className="page"><div className="locked-box">Could not load sessions.json: {err}</div></div>;
   if (!data) return <div className="page" style={{ padding: "40px" }}>Loading portal…</div>;
+
+  if (route[0] === "tool") { const W = ALL_COMPONENTS[route[1]]; return <div className="fb-toolshot">{W ? <W /> : null}</div>; }  // bare tool, used for the card pictures
 
   let view;
   switch (route[0]) {
