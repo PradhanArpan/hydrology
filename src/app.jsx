@@ -4,7 +4,7 @@ import { createPortal } from "react-dom";
 import { renderMd, enhance, esc } from "./md.js";
 import { WIDGETS } from "./widgets.jsx";
 import { ILLOS } from "./illos.jsx";
-import { Menu, Search, Sun, Moon, X, Check, Printer, Lock, FlaskConical, ChevronRight, SquareArrowOutUpRight, Calculator, CloudRain, Droplets, Activity, LineChart, Layers, Map as MapIcon, Wind } from "lucide-react";
+import { Menu, Search, Sun, Moon, X, Check, Printer, Lock, Laptop, ChevronRight, SquareArrowOutUpRight, Calculator, CloudRain, Droplets, Activity, LineChart, Layers, Map as MapIcon, Wind } from "lucide-react";
 
 const ALL_COMPONENTS = { ...ILLOS, ...WIDGETS };
 
@@ -672,7 +672,7 @@ function SessionView({ data, id, preview, markVisited, visited }) {
           <div className="fb-actions">
             {openLabs.map((l, k) => (
               <a key={l.id} className={"fb-btn " + (k === 0 ? "fb-btn--primary" : "fb-btn--secondary")} href={"#/lab/" + l.id}>
-                <Icon as={FlaskConical} /> Lab {l.id}: {l.title}
+                <Icon as={Laptop} /> Lab {l.id}: {l.title}
               </a>
             ))}
             <button className="fb-btn fb-btn--ghost" onClick={() => window.print()}>
@@ -685,7 +685,7 @@ function SessionView({ data, id, preview, markVisited, visited }) {
           <div className="fb-status fb-status--empty">
             <Icon as={Lock} size={20} />
             <div>
-              <h3>This session opens closer to Day {s.day}</h3>
+              <h3>Opens on Day {s.day}</h3>
               <p>Revise the sessions already open in <a href={"#/unit/" + u.n}>Unit {ROMAN[u.n]}</a> in the meantime.</p>
             </div>
           </div>
@@ -724,10 +724,10 @@ function SessionView({ data, id, preview, markVisited, visited }) {
           <>
             {openLabs.length > 0 && (
               <section className="fb-panel">
-                <h2>Try it in software</h2>
+                <h2>Software labs</h2>
                 <ul>
                   {openLabs.map(l => (
-                    <li key={l.id}><a href={"#/lab/" + l.id}><Icon as={FlaskConical} size={16} /> Lab {l.id}: {l.title}</a></li>
+                    <li key={l.id}><a href={"#/lab/" + l.id}><Icon as={Laptop} size={16} /> Lab {l.id}: {l.title}</a></li>
                   ))}
                 </ul>
               </section>
@@ -849,13 +849,13 @@ function Home({ data, visited, preview }) {
           </div>
           <div className="fb-nextclass__actions">
             <a className="fb-btn fb-btn--primary" href={"#/s/" + target.id}>{nextS ? "Read before class" : "Revise this session"}</a>
-            {tlabs[0] && <a className="fb-btn fb-btn--secondary" href={"#/lab/" + tlabs[0].id} title={tlabs[0].title}><Icon as={FlaskConical} /> Start Lab {tlabs[0].id}</a>}
+            {tlabs[0] && <a className="fb-btn fb-btn--secondary" href={"#/lab/" + tlabs[0].id} title={tlabs[0].title}><Icon as={Laptop} /> Start Lab {tlabs[0].id}</a>}
           </div>
         </section>
       ) : (
         <div className="fb-status fb-status--empty">
           <Icon as={Lock} size={20} />
-          <div><h3>The course opens on the first day of class</h3><p>Set up the software in the meantime: <a href="#/page/setup">Software setup</a>.</p></div>
+          <div><h3>Opens on day one</h3><p>Set up the software in the meantime: <a href="#/page/setup">Software setup</a>.</p></div>
         </div>
       )}
 
@@ -896,7 +896,7 @@ function Home({ data, visited, preview }) {
       </section>
 
       <p className="fb-links-row">
-        <a className="fb-btn fb-btn--secondary" href="#/labs"><Icon as={FlaskConical} /> Software lab track</a>
+        <a className="fb-btn fb-btn--secondary" href="#/labs"><Icon as={Laptop} /> Software labs</a>
         <a className="fb-btn fb-btn--ghost" href="#/page/setup">Software setup</a>
       </p>
     </div>
@@ -935,7 +935,7 @@ function UnitPage({ data, n, preview, visited }) {
         {open === 0 && !preview && (
           <div className="fb-status fb-status--empty" style={{ marginBottom: "var(--space-5)" }}>
             <Icon as={Lock} size={20} />
-            <div><h3>Unit {ROMAN[n]} opens after Unit {ROMAN[n - 1] || "I"}</h3><p>The session list below shows what is coming.</p></div>
+            <div><h3>Opens after Unit {ROMAN[n - 1] || "I"}</h3><p>The session list below shows what is coming.</p></div>
           </div>
         )}
         <div className="fb-rows">
@@ -958,16 +958,16 @@ function UnitPage({ data, n, preview, visited }) {
       </article>
       <aside className="fb-rail" aria-label="Unit progress and labs">
         <section className="fb-panel">
-          <h2>Your progress</h2>
+          <h2>Progress</h2>
           <p className="fb-panel__big">{read} of {ss.length} read</p>
           <div className="fb-progress" aria-hidden="true"><i style={{ width: (100 * read) / ss.length + "%" }} /></div>
         </section>
         {labs.length > 0 && (
           <section className="fb-panel">
-            <h2>Labs in this unit</h2>
+            <h2>Labs</h2>
             <ul>
               {labs.map(l => (
-                <li key={l.id}>{l.enabled || preview ? <a href={"#/lab/" + l.id}><Icon as={FlaskConical} size={16} /> {l.id}: {l.title}</a> : <span className="fb-panel__muted">{l.id}: {l.title}</span>}</li>
+                <li key={l.id}>{l.enabled || preview ? <a href={"#/lab/" + l.id}><Icon as={Laptop} size={16} /> {l.id}: {l.title}</a> : <span className="fb-panel__muted">{l.id}: {l.title}</span>}</li>
               ))}
             </ul>
           </section>
@@ -983,13 +983,13 @@ function LabsPage({ data, preview }) {
   return (
     <div className="fb-single">
       <p className="fb-crumb">Software</p>
-      <h1 className="fb-title">Software lab track</h1>
+      <h1 className="fb-title">Software labs</h1>
       <p className="fb-lede">Each lab is a short sequence of steps: what to click, what you should see, and what to do if it goes wrong. One HEC-HMS project grows through the semester, so do the labs in order.</p>
       <p className="fb-links-row" style={{ marginTop: 0 }}>
         <a className="fb-btn fb-btn--secondary" href="#/page/setup">Install the software</a>
       </p>
 
-      <h2 className="fb-h2">Software guides</h2>
+      <h2 className="fb-h2">Guides</h2>
       <div className="fb-rows">
         {data.software.map(p => (
           <RowLink key={p.id} href={"#/sw/" + p.id}>
@@ -1174,7 +1174,7 @@ function LabView({ data, id, preview, refreshLabs }) {
           {l.sessions.map((s, j) => <React.Fragment key={s}>{j > 0 && " and "}<a href={"#/s/" + s}>{s}</a></React.Fragment>)}
         </p>
         {locked ? (
-          <div className="fb-status fb-status--empty"><Icon as={Lock} size={20} /><div><h3>This lab opens with its theory session</h3><p>Finish the labs already open on the <a href="#/labs">lab track</a> first.</p></div></div>
+          <div className="fb-status fb-status--empty"><Icon as={Lock} size={20} /><div><h3>Opens with its session</h3><p>Finish the labs already open on the <a href="#/labs">lab track</a> first.</p></div></div>
         ) : !src ? (
           <div className="fb-skeleton" aria-busy="true" aria-label="Loading lab"><span style={{ width: "60%", height: 24 }} /><span /><span /><span style={{ width: "80%" }} /></div>
         ) : (
@@ -1243,10 +1243,10 @@ function PageView({ data, id, list, kind, preview }) {
       <aside className="fb-rail" aria-label="Related">
         {swLabs.length > 0 && (
           <section className="fb-panel">
-            <h2>Labs that use {swName}</h2>
+            <h2>Labs using {swName}</h2>
             <ul>
               {swLabs.map(l => (
-                <li key={l.id}>{l.enabled || preview ? <a href={"#/lab/" + l.id}><Icon as={FlaskConical} size={16} /> {l.id}: {l.title}</a> : <span className="fb-panel__muted">{l.id}: {l.title}</span>}</li>
+                <li key={l.id}>{l.enabled || preview ? <a href={"#/lab/" + l.id}><Icon as={Laptop} size={16} /> {l.id}: {l.title}</a> : <span className="fb-panel__muted">{l.id}: {l.title}</span>}</li>
               ))}
             </ul>
           </section>
