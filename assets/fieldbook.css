@@ -444,3 +444,6 @@ a.fb-row:hover .fb-row__title { color: var(--river); }
 
 /* Bare tool page (#/tool/<name>), used to take the workbench card pictures */
 .fb-toolshot { max-width: 680px; margin: 0 auto; padding: 16px; background: var(--paper); }
+
+/* All running text is justified; classes that set their own alignment (right, centre) still win over these element rules */
+p, li, dd, details > summary + * { text-align: justify; text-justify: inter-word; hyphens: auto; -webkit-hyphens: auto; overflow-wrap: break-word; }
