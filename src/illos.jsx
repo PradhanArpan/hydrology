@@ -174,34 +174,77 @@ function Horton() {
 }
 
 /* ================= S01: catchment and divides ================= */
+// Smooth curve through points (Catmull-Rom as cubic Béziers).
+function smoothPath(pts, closed) {
+  const n = pts.length, g = i => (closed ? pts[(i + n) % n] : pts[Math.max(0, Math.min(n - 1, i))]);
+  let d = `M${pts[0][0]} ${pts[0][1]}`;
+  for (let i = 0; i < (closed ? n : n - 1); i++) {
+    const p0 = g(i - 1), p1 = g(i), p2 = g(i + 1), p3 = g(i + 2);
+    d += `C${(p1[0] + (p2[0] - p0[0]) / 6).toFixed(1)} ${(p1[1] + (p2[1] - p0[1]) / 6).toFixed(1)} ${(p2[0] - (p3[0] - p1[0]) / 6).toFixed(1)} ${(p2[1] - (p3[1] - p1[1]) / 6).toFixed(1)} ${p2[0]} ${p2[1]}`;
+  }
+  return closed ? d + "Z" : d;
+}
+// Plan and section share one horizontal scale: the section A–A is cut along the line y = 150 of the plan.
+const CT_DIVIDE = [[211, 300], [170, 291], [120, 264], [80, 222], [62, 150], [84, 98], [130, 54], [190, 34], [250, 40], [302, 68], [338, 106], [352, 150], [342, 204], [302, 246], [258, 282]];
+const CT_STREAMS = [
+  { w: 4.2, p: [[211, 300], [206, 262], [214, 214], [206, 150], [222, 104], [232, 64]] },
+  { w: 2.8, p: [[212, 218], [168, 196], [134, 172], [112, 150], [96, 112], [100, 78]] },
+  { w: 2.8, p: [[214, 176], [250, 166], [270, 150], [296, 128], [318, 106]] },
+  { w: 2, p: [[210, 256], [170, 246], [132, 230], [104, 214]] }, { w: 2, p: [[212, 236], [256, 226], [296, 206], [322, 190]] },
+  { w: 1.8, p: [[220, 120], [184, 92], [160, 66], [156, 46]] }, { w: 1.8, p: [[228, 88], [270, 78], [300, 76]] },
+];
+const CT_CROSS = [[62, "1"], [112, "2"], [206, "3"], [270, "4"], [352, "5"]];            // where A–A meets the divide (1, 5) and the streams (2, 3, 4)
+const CT_GROUND = [[0, 196], [20, 186], [62, 112], [86, 150], [112, 172], [148, 150], [178, 168], [206, 208], [236, 170], [270, 188], [310, 138], [352, 98], [385, 170], [420, 190]];
+const groundAt = x => { for (let k = 0; k < CT_GROUND.length - 1; k++) { const [x0, y0] = CT_GROUND[k], [x1, y1] = CT_GROUND[k + 1]; if (x <= x1) { const t = (x - x0) / (x1 - x0); return y0 + (y1 - y0) * (1 - Math.cos(Math.PI * t)) / 2; } } return CT_GROUND[CT_GROUND.length - 1][1]; };
 function Catchment() {
   const [tilt, setTilt] = useState(0);
-  const pd = 210 + tilt * 9; // phreatic divide x
-  return <Illo title="A catchment and its divides" kind="Interactive" cap="Left: plan view — the divide (dashed) bounds all land draining to the outlet. Right: section A–A — move the slider to tilt the impervious layer and watch the groundwater divide move away from the ridge.">
+  const sec = useMemo(() => {
+    const xs = Array.from({ length: 141 }, (_, k) => k * 3), gy = xs.map(groundAt);
+    const smooth = xs.map((x, k) => { let a = 0, n = 0; for (let m = -16; m <= 16; m++) { const q = gy[Math.max(0, Math.min(xs.length - 1, k + m))]; a += q; n++; } return a / n; });
+    return { xs, gy, smooth };
+  }, []);
+  const dx = tilt * 6;                                               // phreatic divides shift toward the up-dip side of the impervious layer
+  const base = x => 288 - tilt * (x - 210) / 210 * 2.4;
+  const wt = sec.xs.map((x, k) => { const k2 = Math.max(0, Math.min(sec.xs.length - 1, Math.round((x - dx) / 3))); return Math.min(Math.max(sec.smooth[k2] + 24, sec.gy[k] + 4), base(x) - 8); });
+  const line = ys => sec.xs.map((x, k) => `${k ? "L" : "M"}${x} ${ys[k].toFixed(1)}`).join("");
+  const poly = (top, bot) => line(top) + sec.xs.slice().reverse().map(x => `L${x} ${bot(x).toFixed(1)}`).join("") + "Z";
+  const half = (352 - 62) / 2, pct = Math.abs(Math.round(dx / half * 100));
+  return <Illo title="A catchment and its divides" kind="Interactive" cap="Left: plan view. The dashed divide bounds all land draining to the outlet, and the dotted line A–A is where the section is cut. Right: section A–A on the same horizontal scale (matching numbers). Move the slider to tilt the impervious layer and watch the groundwater (phreatic) divides move away from the ridges.">
     <div className="illo-grid">
-      <div className="cell"><svg viewBox="0 0 420 320"><defs><Arrow id="cz" color="#1f6f8f" /></defs>
-        <rect width="420" height="320" fill="#f4f8f1" />
-        {[0, 1, 2, 3].map(k => <path key={k} d={`M${70 + k * 22} ${300 - k * 10} C${40 + k * 18} ${180 - k * 6} ${120 + k * 12} ${50 + k * 14} ${210} ${30 + k * 22} S${370 - k * 14} ${120 + k * 8} ${330 - k * 18} ${300 - k * 10}`} fill="none" stroke="#c9d8bf" strokeWidth="1.5" />)}
-        <path d="M70 300 C40 180 120 50 210 30 S370 120 330 300 Z" fill="#e3eedb" stroke="#0f1f3d" strokeWidth="2.5" strokeDasharray="9 6" />
-        <path d="M200 300 C205 240 190 200 210 150 S240 90 215 60" stroke="#1f6f8f" strokeWidth="4" fill="none" />
-        <path d="M205 210 C170 190 140 150 110 130" stroke="#1f6f8f" strokeWidth="2.5" fill="none" /><path d="M212 170 C250 150 280 120 300 100" stroke="#1f6f8f" strokeWidth="2.5" fill="none" />
-        <path d="M200 250 C240 240 280 230 310 200" stroke="#1f6f8f" strokeWidth="2" fill="none" /><path d="M202 260 C170 250 130 240 100 220" stroke="#1f6f8f" strokeWidth="2" fill="none" />
-        <circle cx="200" cy="300" r="8" fill="#c8973a" stroke="#0f1f3d" /><text x="214" y="306" fontSize="13" fontWeight="700" fill="#0f1f3d">Outlet</text>
-        <text x="250" y="40" fontSize="13" fill="#0f1f3d" fontWeight="600">divide (ridge line)</text>
-        <line x1="40" y1="130" x2="380" y2="130" stroke="#8a4b12" strokeDasharray="3 3" /><text x="24" y="134" fontSize="12" fill="#8a4b12">A</text><text x="386" y="134" fontSize="12" fill="#8a4b12">A</text>
-        {[[120, 230], [280, 240], [160, 90], [270, 80]].map(([x, y], i) => <path key={i} d={`M${x} ${y} L${x + (200 - x) * 0.25} ${y + (220 - y) * 0.25}`} stroke="#1f6f8f" strokeWidth="1.5" markerEnd="url(#cz)" />)}
+      <div className="cell"><svg viewBox="0 0 420 320" role="img" aria-label="Plan view of a drainage basin with its streams, divide and the line A–A"><defs><Arrow id="cz" color="#1f6f8f" /></defs>
+        <rect width="420" height="320" fill="#efe9dc" />
+        <path d={smoothPath(CT_DIVIDE, true)} fill="#e0ebd3" stroke="none" />
+        {CT_STREAMS.map((r, i) => <path key={i} d={smoothPath(r.p, false)} stroke="#1f6f8f" strokeWidth={r.w} fill="none" strokeLinecap="round" />)}
+        <path d={smoothPath(CT_DIVIDE, true)} fill="none" stroke="#0f1f3d" strokeWidth="2.5" strokeDasharray="9 6" />
+        {[[104, 86, 122, 104], [292, 92, 276, 112], [150, 250, 168, 244], [300, 232, 284, 222], [180, 140, 196, 148], [250, 214, 236, 218]].map(([a, b, c, d], i) => <path key={i} d={`M${a} ${b}L${c} ${d}`} stroke="#1f6f8f" strokeWidth="1.5" markerEnd="url(#cz)" />)}
+        {[[28, 60, 44, 76], [394, 200, 380, 184], [60, 270, 46, 284]].map(([a, b, c, d], i) => <path key={i} d={`M${a} ${b}L${c} ${d}`} stroke="#7d6e55" strokeWidth="1.5" strokeDasharray="3 3" />)}
+        <text x="10" y="28" fontSize="11" fill="#6f6246">neighbouring catchments</text>
+        <circle cx="211" cy="300" r="8" fill="#c8973a" stroke="#0f1f3d" /><text x="226" y="312" fontSize="13" fontWeight="700" fill="#0f1f3d">Outlet</text>
+        <text x="246" y="26" fontSize="12.5" fill="#0f1f3d" fontWeight="600">divide (ridge line)</text>
+        <line x1="30" y1="150" x2="390" y2="150" stroke="#8a4b12" strokeDasharray="3 3" /><text x="14" y="154" fontSize="12" fontWeight="700" fill="#8a4b12">A</text><text x="394" y="154" fontSize="12" fontWeight="700" fill="#8a4b12">A</text>
+        {CT_CROSS.map(([x, n]) => <g key={n}><circle cx={x} cy="150" r="8.5" fill="#fff" stroke="#8a4b12" /><text x={x} y="154" fontSize="11" fontWeight="700" textAnchor="middle" fill="#8a4b12">{n}</text></g>)}
       </svg><h6>Plan view</h6><p>Every drop falling inside the dashed line ends up at the outlet.</p></div>
-      <div className="cell"><svg viewBox="0 0 420 320">
+      <div className="cell"><svg viewBox="0 0 420 320" role="img" aria-label="Section A–A across the catchment: ridge, valley with stream, ridge, with the water table and the impervious layer below"><defs><Arrow id="cz2" color="#1f6f8f" /></defs>
         <rect width="420" height="320" fill="#fff" />
-        <path d="M0 230 L120 150 L210 60 L300 150 L420 230 L420 320 L0 320Z" fill={P.soil} />
-        <path d={`M0 ${290 + tilt * 3} L420 ${290 - tilt * 3} L420 320 L0 320Z`} fill={P.rock} />
-        <path d={`M0 252 Q${pd / 2} 178 ${pd} 128 Q${pd + (420 - pd) / 2} 178 420 252 L420 ${290 - tilt * 3} L0 ${290 + tilt * 3}Z`} fill={P.gw} opacity=".85" />
-        <path d="M0 230 L120 150 L210 60 L300 150 L420 230" stroke="#5f8f4a" strokeWidth="4" fill="none" />
-        <line x1="210" y1="30" x2="210" y2="320" stroke="#0f1f3d" strokeDasharray="6 4" /><text x="140" y="24" fontSize="12.5" fill="#0f1f3d" fontWeight="600">topographic divide</text>
-        <line x1={pd} y1="100" x2={pd} y2="320" stroke="#1f6f8f" strokeWidth="2" strokeDasharray="4 3" /><text x={Math.min(pd + 6, 330)} y="112" fontSize="12.5" fill="#1f6f8f" fontWeight="600">phreatic divide</text>
-        <text x="20" y="312" fontSize="11" fill="#f4f2ee">impervious layer</text>
+        <path d={poly(sec.gy, x => base(x))} fill={P.soil} />
+        <path d={poly(wt, x => base(x))} fill={P.gw} opacity=".9" />
+        <path d={`M0 ${base(0).toFixed(1)}L420 ${base(420).toFixed(1)}L420 320L0 320Z`} fill={P.rock} />
+        <path d={line(wt)} fill="none" stroke="#1f6f8f" strokeWidth="1.6" strokeDasharray="5 3" />
+        <path d={line(sec.gy)} stroke="#5f8f4a" strokeWidth="4" fill="none" strokeLinejoin="round" />
+        <rect x="0" y="40" width="62" height="190" fill="#7d6e55" opacity=".13" /><rect x="352" y="40" width="68" height="190" fill="#7d6e55" opacity=".13" />
+        {[62, 352].map(x => <line key={x} x1={x} y1="40" x2={x} y2="300" stroke="#0f1f3d" strokeDasharray="6 4" />)}
+        {[62, 352].map(x => <line key={"p" + x} x1={x + dx} y1={groundAt(x) + 14} x2={x + dx} y2="300" stroke="#1f6f8f" strokeWidth="2.2" strokeDasharray="4 3" />)}
+        {[112, 206, 270].map(x => <path key={x} d={`M${x} ${groundAt(x) - 34}L${x} ${groundAt(x) - 8}`} stroke="#1f6f8f" strokeWidth="2" markerEnd="url(#cz2)" />)}
+        {CT_CROSS.map(([x, n]) => <g key={n}><circle cx={x} cy="22" r="8.5" fill="#fff" stroke="#8a4b12" /><text x={x} y="26" fontSize="11" fontWeight="700" textAnchor="middle" fill="#8a4b12">{n}</text></g>)}
+        <text x="68" y="52" fontSize="10.5" fill="#0f1f3d" fontWeight="600">topographic</text><text x="68" y="64" fontSize="10.5" fill="#0f1f3d" fontWeight="600">divide</text><text x="346" y="52" fontSize="10.5" fill="#0f1f3d" fontWeight="600" textAnchor="end">topographic</text><text x="346" y="64" fontSize="10.5" fill="#0f1f3d" fontWeight="600" textAnchor="end">divide</text>
+        <text x="206" y={groundAt(206) - 38} fontSize="11.5" fill="#1f6f8f" fontWeight="600" textAnchor="middle">stream</text>
+        <text x="8" y="92" fontSize="10.5" fill="#6f6246">neighbouring</text><text x="8" y="104" fontSize="10.5" fill="#6f6246">catchment</text>
+        <text x="412" y="92" fontSize="10.5" fill="#6f6246" textAnchor="end">neighbouring</text><text x="412" y="104" fontSize="10.5" fill="#6f6246" textAnchor="end">catchment</text>
+        <text x="206" y="258" fontSize="11.5" fill="#0f1f3d" textAnchor="middle" fontWeight="600">groundwater (aquifer)</text><text x="206" y="272" fontSize="10.5" fill="#1f6f8f" textAnchor="middle">water table (dashed)</text>
+        <text x="12" y="312" fontSize="11" fill="#f4f2ee">impervious layer</text>
+        {tilt !== 0 && <text x="206" y="298" fontSize="11" fill="#1f6f8f" textAnchor="middle" fontWeight="600">phreatic divides</text>}
       </svg><label className="f" style={{ fontSize: 13 }}>Tilt of the impervious layer<input type="range" min="-10" max="10" value={tilt} onChange={e => setTilt(+e.target.value)} /></label>
-        <p>{tilt === 0 ? "Divides coincide: the water budget closes." : `Divides differ by about ${Math.abs(Math.round(tilt * 9 / 210 * 100))} % of the half-width — groundwater crosses the ridge, so the catchment ${tilt > 0 ? "gains" : "loses"} water underground.`}</p></div>
+        <p>{tilt === 0 ? "Divides coincide: the water budget closes." : `The groundwater divides sit about ${pct} % of the half-width away from the ridges — groundwater crosses under the ridge (it leaves the catchment on one side and enters it on the other), so the surface divide alone no longer closes the water budget.`}</p></div>
     </div>
   </Illo>;
 }
