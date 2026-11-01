@@ -105,37 +105,143 @@ const FORMS = [
   ["Dew", "dew", "Water condensing directly on cool surfaces at night. Not counted in rainfall totals."],
   ["Frost", "frost", "Ice crystals formed directly on surfaces below 0 °C."],
 ];
+// Photo credits (Wikimedia Commons; each file's licence requires the credit shown under the photo).
+const FORM_CREDIT = {
+  rain: ["Bidgee", "CC BY-SA 3.0", "https://commons.wikimedia.org/wiki/File:Heavy_precipitation_falling_on_the_Gregadoo_hills_from_a_Cumulonimbus_calvus_cloud_viewed_from_Rocky_Hill.jpg"],
+  drizzle: ["Nikhil More", "CC BY-SA 4.0", "https://commons.wikimedia.org/wiki/File:Monsoon_Maharashtra_India_Rain_Landscape_(1)_03.jpg"],
+  snow: ["epSos.de", "CC BY 2.0", "https://commons.wikimedia.org/wiki/File:White_Snow_on_the_Christmas_Tree.jpg"],
+  hail: ["Rubbish computer", "CC BY-SA 4.0", "https://commons.wikimedia.org/wiki/File:August_5_2017_Warwickshire_hail_05.jpg"],
+  glaze: ["Famartin", "CC BY-SA 4.0", "https://commons.wikimedia.org/wiki/File:2025-12-27_10_44_48_Flowering_Dogwood_branches_coated_in_glaze_ice_along_Windybush_Way_in_the_Mountainview_section_of_Ewing_Township,_Mercer_County,_New_Jersey.jpg"],
+  dew: ["Peter Balcerzak", "CC BY-SA 3.0", "https://commons.wikimedia.org/wiki/File:Morning_Dew_(180156587).jpeg"],
+  frost: ["W.carter", "CC BY-SA 4.0", "https://commons.wikimedia.org/wiki/File:Hoar_frost_on_a_lilac_leaf_in_Tuntorp_1.jpg"],
+};
+const FORM_ALT = { rain: "A rain shaft falling from a storm cloud over hills", drizzle: "Misty monsoon drizzle over a hill landscape in Maharashtra", snow: "Fresh snow on a conifer branch", hail: "Hailstones in an open hand", glaze: "Twigs coated in clear glaze ice", dew: "Dew drops on blades of grass", frost: "Hoar frost on a leaf" };
+
+/* ---- Types of precipitation: animated, drawn as scenes. Animation uses CSS (and SMIL for moving air parcels) and can be paused. ---- */
+function WxStage({ label, children }) {
+  const ref = useRef(null);
+  const [paused, setPaused] = useState(() => { try { return window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e) { return false; } });
+  useEffect(() => { const s = ref.current; if (!s || !s.pauseAnimations) return; paused ? s.pauseAnimations() : s.unpauseAnimations(); }, [paused, children]);
+  return <div className={"wx-stage" + (paused ? " wx-paused" : "")}>
+    <svg ref={ref} viewBox="0 0 400 260" role="img" aria-label={label}>{children}</svg>
+    <button type="button" className="wx-pause" onClick={() => setPaused(!paused)} aria-pressed={paused}>{paused ? "Play animation" : "Pause animation"}</button>
+  </div>;
+}
+const Rainfall = ({ xs, y1, d, delay = 0, w = 1.6, c = "#dbeaf4", op = 0.9 }) => <g>{xs.map((x, i) => <line key={i} className="wx-rain" style={{ "--d": (typeof d === "function" ? d(x) : d) + "px", animationDelay: (delay + (i * 0.37) % 1.1) + "s" }} x1={x} y1={typeof y1 === "function" ? y1(x) : y1} x2={x - 2} y2={(typeof y1 === "function" ? y1(x) : y1) + 9} stroke={c} strokeWidth={w} strokeLinecap="round" opacity={op} />)}</g>;
+const Puff = ({ cx, cy, r, fill = "#f4f7fa", op = 1 }) => <circle cx={cx} cy={cy} r={r} fill={fill} opacity={op} />;
+
 function Frontal() {
-  return <svg viewBox="0 0 300 150"><defs><linearGradient id="cold" x1="0" x2="1"><stop offset="0" stopColor="#9cc3d3" /><stop offset="1" stopColor="#d7e9f0" /></linearGradient></defs>
-    <rect width="300" height="150" fill="#fff" /><path d="M0 150 L0 70 Q120 70 300 20 L300 150 Z" fill="url(#cold)" /><path d="M0 70 Q120 70 300 20 L300 0 L0 0Z" fill="#fbe9e1" />
-    <text x="40" y="120" fontSize="12" fill="#0f1f3d">cold, dense air</text><text x="20" y="30" fontSize="12" fill="#9a3b1a">warm, moist air</text>
-    <path d="M60 55 L180 30" stroke="#9a3b1a" strokeWidth="2" markerEnd="url(#ah)" /><defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="#9a3b1a" /></marker></defs>
-    <ellipse cx="210" cy="22" rx="40" ry="12" fill="#cfd6dd" />{[195, 205, 215, 225].map(x => <line key={x} x1={x} y1="34" x2={x - 4} y2="52" stroke="#1a5f7a" />)}
-    <text x="150" y="145" fontSize="10" fill="#a09080">front: warm air forced up over cold air</text></svg>;
+  const b = x => 215 - (x - 60) * 0.353;                       // the sloping boundary between cold and warm air
+  const rainX = Array.from({ length: 15 }, (_, i) => 236 + i * 11);
+  return <WxStage label="Frontal precipitation: warm moist air rises over a wedge of cold air, cools, and rain falls ahead of the front">
+    <defs>
+      <linearGradient id="fr-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#aac3d6" /><stop offset="1" stopColor="#e9f0f5" /></linearGradient>
+      <linearGradient id="fr-cold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#8fb0c6" /><stop offset="1" stopColor="#6e93ab" /></linearGradient>
+      <filter id="fr-blur" x="-20%" y="-40%" width="140%" height="180%"><feGaussianBlur stdDeviation="3.2" /></filter>
+    </defs>
+    <rect width="400" height="260" fill="url(#fr-sky)" />
+    <path d="M0 0H400V98L60 215H0Z" fill="#f2c9a4" opacity=".3" />
+    <path d="M60 215L400 98V215Z" fill="url(#fr-cold)" />
+    <path d="M60 215L400 98" stroke="#2d4c61" strokeWidth="2" strokeDasharray="3 3" opacity=".7" />
+    <g filter="url(#fr-blur)"><path d="M150 176L400 92V132L180 196Z" fill="#7d8a97" opacity=".75" />
+      {[[150, 168, 34, 13], [198, 152, 38, 14], [248, 136, 40, 14], [300, 119, 42, 15], [352, 101, 44, 15], [392, 90, 30, 13]].map(([x, y, rx, ry], i) => <ellipse key={i} cx={x} cy={y} rx={rx} ry={ry} fill="#d5dce3" />)}</g>
+    <g className="wx-drift">{[[40, 36, 1], [310, 30, 0.8]].map(([x, y, s], i) => <g key={i} transform={`translate(${x} ${y}) scale(${s})`} opacity=".85"><Puff cx={0} cy={0} r={14} fill="#fbf2ea" /><Puff cx={16} cy={-5} r={17} fill="#fbf2ea" /><Puff cx={34} cy={2} r={13} fill="#fbf2ea" /></g>)}</g>
+    <Rainfall xs={rainX} y1={x => b(x) - 6} d={x => 215 - b(x) + 4} c="#e8f3fa" />
+    <rect y="215" width="400" height="45" fill="#6f8f4f" /><rect y="215" width="400" height="6" fill="#5b7a3f" />
+    <path d="M0 215q10 -8 22 0t22 0t22 0t22 0" fill="#5b7a3f" />
+    <path d="M0 150C90 150 170 128 250 98S360 56 400 46" stroke="#d9772e" strokeWidth="1.6" strokeDasharray="5 6" fill="none" className="wx-flow" opacity=".85" />
+    {[0, 1, 2, 3, 4].map(i => <circle key={i} r="4.2" fill="#e8843a" stroke="#fff3e6" strokeWidth="1"><animateMotion dur="9s" begin={`${-i * 1.8}s`} repeatCount="indefinite" path="M0 150C90 150 170 128 250 98S360 56 400 46" /></circle>)}
+    <text x="14" y="22" fontSize="15" fontWeight="700" fill="#8a3b12">warm, moist air (lighter)</text>
+    <text x="236" y="244" fontSize="15" fontWeight="700" fill="#10324a" textAnchor="middle">cold, dense air (wedge)</text>
+    <text x="92" y="190" fontSize="14" fontWeight="700" fill="#10324a" transform="rotate(-19 92 190)">front</text>
+    <text x="394" y="204" fontSize="13.5" fill="#10324a" textAnchor="end" fontWeight="700">rain falls ahead of the front</text>
+  </WxStage>;
+}
+
+function CycloneArms() {
+  const spiral = (rot) => { let d = ""; for (let k = 0; k <= 28; k++) { const t = k / 28, a = rot + t * 1.9 * Math.PI, r = 118 - t * 96; d += (k ? "L" : "M") + (170 + r * Math.cos(a)).toFixed(1) + " " + (130 - r * Math.sin(a)).toFixed(1); } return d; };
+  return <>{[0, Math.PI / 2, Math.PI, 3 * Math.PI / 2].map((r, i) => <path key={i} d={spiral(r)} className="wx-flow" stroke="#ffd27a" strokeWidth="2" strokeDasharray="7 9" fill="none" strokeLinecap="round" />)}</>;
 }
 function CyclonePlan() {
-  const [hi, setHi] = useState(false);
-  return <svg viewBox="0 0 300 150"><rect width="300" height="150" fill="#fff" />
-    <g transform="translate(80 75)"><g style={{ animation: "spin 6s linear infinite", transformOrigin: "0 0" }}>{[0, 90, 180, 270].map(a => <path key={a} transform={`rotate(${a})`} d="M0 0 C 20 -10 40 -10 58 6" stroke="#1f6f8f" strokeWidth="5" fill="none" strokeLinecap="round" opacity=".8" />)}</g>
-      <circle r="8" fill="#fff" stroke="#0f1f3d" /><text y="62" fontSize="11" textAnchor="middle" fill="#0f1f3d">LOW · air spirals in, rises</text></g>
-    <g transform="translate(220 75)">{[0, 90, 180, 270].map(a => <path key={a} transform={`rotate(${a})`} d="M10 0 L50 0" stroke="#8a4b12" strokeWidth="3" markerEnd="url(#cyo)" />)}<circle r="9" fill="#fbe9e1" stroke="#8a4b12" /><text y="62" fontSize="11" textAnchor="middle" fill="#8a4b12">HIGH · air sinks, spreads out</text></g>
-    <defs><marker id="cyo" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10z" fill="#8a4b12" /></marker></defs>
-    <text x="80" y="14" fontSize="11" textAnchor="middle" fill="#1f6f8f" fontWeight="600">Cyclone (anticlockwise, N. hemisphere)</text><text x="220" y="14" fontSize="11" textAnchor="middle" fill="#8a4b12" fontWeight="600">Anticyclone</text></svg>;
+  const arm = "M0 0C30 -12 70 -8 104 26";
+  return <WxStage label="Cyclonic precipitation: a rotating low-pressure system seen from above, with air spiralling in anticlockwise and rising">
+    <defs>
+      <radialGradient id="cy-sea" cx=".42" cy=".5" r=".8"><stop offset="0" stopColor="#3b8fb0" /><stop offset="1" stopColor="#14425a" /></radialGradient>
+      <filter id="cy-blur" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="5" /></filter>
+      <filter id="cy-blur2" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="2.4" /></filter>
+    </defs>
+    <rect width="400" height="260" fill="url(#cy-sea)" />
+    <path d="M338 0H400V260H292C312 214 296 168 322 128C340 100 318 52 338 0Z" fill="#7f9a5f" stroke="#5c7745" strokeWidth="1.4" />
+    <text x="364" y="118" fontSize="13.5" fill="#f1f6e6" textAnchor="middle" fontWeight="600">coast</text>
+    <g transform="translate(170 130)"><g className="wx-spin" style={{ transformOrigin: "0 0" }}>
+      <g filter="url(#cy-blur)">{[0, 90, 180, 270].map(a => <path key={a} transform={`rotate(${a})`} d={arm} stroke="#f4f8fb" strokeWidth="24" fill="none" strokeLinecap="round" opacity=".78" />)}
+        {[45, 135, 225, 315].map(a => <path key={a} transform={`rotate(${a})`} d="M0 0C24 -8 54 -4 80 18" stroke="#e5edf3" strokeWidth="16" fill="none" strokeLinecap="round" opacity=".6" />)}</g>
+      <g filter="url(#cy-blur2)"><circle r="32" fill="#f7fbfd" opacity=".85" /></g>
+    </g><circle r="9" fill="#14425a" /><circle r="13" fill="none" stroke="#fff" strokeWidth="1.5" opacity=".7" /></g>
+    <g transform="translate(-0 0)"><CycloneArms /></g>
+    <rect x="8" y="8" width="262" height="48" rx="6" fill="#0c2a3a" opacity=".72" />
+    <text x="16" y="28" fontSize="14.5" fontWeight="700" fill="#fff">LOW pressure: air spirals in</text><text x="16" y="47" fontSize="13" fill="#ffe4a3">anticlockwise (N. hemisphere), rises</text>
+    <text x="170" y="250" fontSize="13.5" fill="#e8f1f6" textAnchor="middle">heavy rain in the spiral bands</text>
+  </WxStage>;
 }
+
 function Convective() {
-  return <svg viewBox="0 0 300 150"><rect width="300" height="150" fill="#fff" /><rect y="128" width="300" height="22" fill="#c9a878" />
-    <circle cx="40" cy="30" r="16" fill="#e8b95a" />{[0, 1, 2].map(i => <path key={i} className="anim-rise" style={{ animationDelay: i * 0.9 + "s" }} d={`M${120 + i * 22} 125 q6 -10 0 -20 q-6 -10 0 -20`} stroke="#c8973a" strokeWidth="2" fill="none" />)}
-    <path d="M110 70 C100 40 140 10 170 25 C200 5 240 30 225 60 C250 70 240 92 215 90 L120 90 C95 92 92 72 110 70Z" fill="#dfe6ee" stroke="#9fb0bf" strokeWidth="2" />
-    {[135, 155, 175, 195].map((x, i) => <line key={x} className="anim-fall" style={{ animationDelay: i * 0.3 + "s" }} x1={x} y1="95" x2={x - 4} y2="112" stroke="#1f6f8f" strokeWidth="2" />)}
-    <text x="150" y="145" fontSize="10.5" textAnchor="middle" fill="#3a332c">heated ground → rising air → towering cloud → short, intense rain</text></svg>;
+  const thermals = [[132, 0], [168, 0.6], [214, 1.1], [252, 1.7]];
+  return <WxStage label="Convective precipitation: the sun heats the ground, warm air rises in thermals, a cumulonimbus cloud grows and a short intense shower falls">
+    <defs>
+      <linearGradient id="cv-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#6fa6cf" /><stop offset="1" stopColor="#d8e9f3" /></linearGradient>
+      <linearGradient id="cv-grd" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#c7a965" /><stop offset="1" stopColor="#8d7544" /></linearGradient>
+      <radialGradient id="cv-sun"><stop offset="0" stopColor="#fff3c4" /><stop offset="1" stopColor="#f4c14e" /></radialGradient>
+      <filter id="cv-soft" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="1.6" /></filter>
+    </defs>
+    <rect width="400" height="260" fill="url(#cv-sky)" />
+    <g transform="translate(46 44)"><g className="wx-spin slow" style={{ transformOrigin: "0 0" }}>{Array.from({ length: 12 }, (_, i) => <line key={i} x1="26" y1="0" x2="40" y2="0" transform={`rotate(${i * 30})`} stroke="#f4c14e" strokeWidth="3" strokeLinecap="round" />)}</g><circle r="22" fill="url(#cv-sun)" /></g>
+    <g className="wx-grow" style={{ transformOrigin: "205px 128px" }}>
+      <g filter="url(#cv-soft)">
+        {[[205, 118, 36], [165, 112, 28], [245, 114, 28], [190, 88, 32], [228, 84, 30], [208, 60, 28], [196, 38, 22], [222, 40, 20]].map(([x, y, r], i) => <Puff key={i} cx={x} cy={y} r={r} />)}
+        <ellipse cx="205" cy="22" rx="62" ry="9" fill="#f1f5f8" className="wx-anvil" />
+        <ellipse cx="205" cy="132" rx="58" ry="11" fill="#7d8a97" />
+        {[[176, 100, 16], [232, 102, 14], [210, 74, 15]].map(([x, y, r], i) => <circle key={i} cx={x} cy={y} r={r} fill="#d9e0e7" opacity=".7" />)}</g>
+    </g>
+    <Rainfall xs={[170, 180, 190, 200, 210, 220, 230, 240]} y1={140} d={64} delay={3.2} c="#f1f8fc" w={1.8} />
+    <rect y="206" width="400" height="54" fill="url(#cv-grd)" />
+    {[0, 1, 2].map(i => <path key={i} d={`M${24 + i * 8} ${204 - i * 5}q16 -7 32 0t32 0t32 0t32 0t32 0t32 0t32 0`} stroke="#fff4d6" strokeWidth="1.6" fill="none" opacity=".45" className="wx-shimmer" style={{ animationDelay: i * 0.5 + "s" }} />)}
+    {thermals.map(([x, dl], i) => <g key={i}><path d={`M${x} 204C${x - 10} 180 ${x + 10} 160 ${x} 140C${x - 8} 124 ${x + 6} 112 ${x} 100`} stroke="#e9902f" strokeWidth="1.6" strokeDasharray="4 6" fill="none" className="wx-flow wx-up" opacity=".9" />
+      <circle r="3.6" fill="#f08a2c"><animateMotion dur="4.2s" begin={`${-dl * 2}s`} repeatCount="indefinite" path={`M${x} 204C${x - 10} 180 ${x + 10} 160 ${x} 140C${x - 8} 124 ${x + 6} 112 ${x} 100`} /></circle></g>)}
+    <text x="12" y="236" fontSize="12" fontWeight="700" fill="#fff4d6">sun-heated ground</text>
+    <text x="312" y="78" fontSize="14" fontWeight="700" fill="#0f3050" textAnchor="middle">cumulonimbus</text><text x="312" y="92" fontSize="13" fill="#0f3050" textAnchor="middle">grows tall in minutes</text>
+    <text x="250" y="190" fontSize="14" fontWeight="700" fill="#10324a" textAnchor="middle">short, intense shower</text>
+    <text x="104" y="160" fontSize="13.5" fontWeight="700" fill="#8a3b12">rising warm air</text>
+  </WxStage>;
 }
+
 function Orographic() {
-  return <svg viewBox="0 0 300 150"><rect width="300" height="150" fill="#fff" /><path d="M0 140 L110 140 L170 40 L230 140 L300 140 L300 150 L0 150Z" fill="#7a9a5a" />
-    <path d="M10 110 Q100 105 150 50" stroke="#1a5f7a" strokeWidth="2" fill="none" markerEnd="url(#ab)" /><path d="M185 50 Q220 90 290 112" stroke="#8a4b12" strokeWidth="2" fill="none" markerEnd="url(#ab2)" />
-    <defs><marker id="ab" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="#1a5f7a" /></marker><marker id="ab2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="#8a4b12" /></marker></defs>
-    <ellipse cx="135" cy="35" rx="40" ry="13" fill="#b9c2cb" />{[115, 125, 135, 145].map(x => <line key={x} x1={x} y1="48" x2={x - 5} y2="80" stroke="#1a5f7a" />)}
-    <text x="8" y="100" fontSize="11" fill="#1a5f7a">moist monsoon air</text><text x="58" y="130" fontSize="10" fill="#fff">windward: heavy rain</text><text x="200" y="128" fontSize="10" fill="#fff">leeward: rain shadow</text>
-    <text x="195" y="72" fontSize="10" fill="#8a4b12">dry, sinking air</text></svg>;
+  const flow = "M0 168C70 168 118 150 160 112S238 54 290 66";
+  return <WxStage label="Orographic precipitation: moist air from the sea is forced up a mountain, cools, and rains on the windward slope, leaving a dry rain shadow behind">
+    <defs>
+      <linearGradient id="or-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#8db5d4" /><stop offset="1" stopColor="#e3eef5" /></linearGradient>
+      <linearGradient id="or-wind" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#4f8a3e" /><stop offset="1" stopColor="#2f6a32" /></linearGradient>
+      <linearGradient id="or-lee" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#c4ad73" /><stop offset="1" stopColor="#9b8756" /></linearGradient>
+      <filter id="or-blur" x="-20%" y="-30%" width="140%" height="160%"><feGaussianBlur stdDeviation="2.4" /></filter>
+    </defs>
+    <rect width="400" height="260" fill="url(#or-sky)" />
+    <g><rect y="214" width="96" height="46" fill="#2a7ba0" /><path className="wx-wave" d="M-30 218q12 -6 24 0t24 0t24 0t24 0t24 0t24 0t24 0t24 0" stroke="#bfe3f1" strokeWidth="1.6" fill="none" /></g>
+    <path d="M76 214L130 170L196 100L228 62L228 260H76Z" fill="url(#or-wind)" />
+    <path d="M228 62L262 98L318 168L400 204V260H228Z" fill="url(#or-lee)" />
+    <path d="M214 76L228 62L242 78L234 74L228 82L222 74Z" fill="#fff" opacity=".95" />
+    {[[110, 190], [128, 176], [150, 160], [172, 138], [190, 118]].map(([x, y], i) => <path key={i} d={`M${x} ${y}l-5 12h10z`} fill="#245c2a" />)}
+    <g filter="url(#or-blur)" className="wx-drift slow">{[[150, 100, 26, 11], [184, 84, 28, 12], [214, 68, 24, 10], [176, 108, 30, 11]].map(([x, y, rx, ry], i) => <ellipse key={i} cx={x} cy={y} rx={rx} ry={ry} fill="#f2f6f9" />)}</g>
+    <Rainfall xs={[138, 150, 162, 174, 186, 198, 210]} y1={x => 112 - (x - 138) * 0.58} d={x => 36 + (x - 138) * 0.1} c="#f4fafd" />
+    <path d={flow} className="wx-flow" stroke="#2f86a8" strokeWidth="1.8" strokeDasharray="6 7" fill="none" />
+    <path d="M0 136C60 136 100 118 140 84" className="wx-flow" stroke="#2f86a8" strokeWidth="1.4" strokeDasharray="6 7" fill="none" opacity=".7" />
+    {[0, 1, 2, 3].map(i => <circle key={i} r="4" fill="#3a97bf" stroke="#fff" strokeWidth="1"><animateMotion dur="8s" begin={`${-i * 2}s`} repeatCount="indefinite" path={flow} /></circle>)}
+    <path d="M262 64C300 66 340 100 400 138" className="wx-flow" stroke="#c2742c" strokeWidth="1.6" strokeDasharray="3 8" fill="none" opacity=".85" />
+    {[0, 1, 2].map(i => <circle key={i} r="3.2" fill="#d98630"><animateMotion dur="7s" begin={`${-i * 2.3}s`} repeatCount="indefinite" path="M262 64C300 66 340 100 400 138" /></circle>)}
+    <text x="8" y="120" fontSize="14" fontWeight="700" fill="#10405a">moist monsoon air from the sea</text>
+    <text x="108" y="238" fontSize="14" fontWeight="700" fill="#fff">windward: heavy rain</text>
+    <text x="300" y="230" fontSize="14" fontWeight="700" fill="#4a3a14" textAnchor="middle">leeward: rain shadow</text>
+    <text x="352" y="124" fontSize="13" fill="#8a4b12" textAnchor="middle" fontWeight="600">dry, sinking air</text>
+  </WxStage>;
 }
 const TYPES = [
   ["Frontal", <Frontal />, "Two air masses of different temperature and density meet. Warm, lighter air is forced up over the cold air along the front and cools to condensation. Cold fronts: short, intense rain; warm fronts: long, moderate rain over wide areas.", "Western disturbances bringing winter rain and snow to north-west India."],
@@ -145,15 +251,16 @@ const TYPES = [
 ];
 function PrecipExplorer() {
   const [f, setF] = useState(0); const [t, setT] = useState(3);
+  const cr = FORM_CREDIT[FORMS[f][1]];
   return <Box title="Forms and types of precipitation">
-    <div className="sec-title" style={{ marginTop: 0 }}>Forms — click a photo</div>
-    <div className="cards">{FORMS.map(([n, k], i) => <button key={n} className={"cardpick" + (i === f ? " on" : "")} onClick={() => setF(i)}><FormIcon k={k} /><div>{n}</div></button>)}</div>
-    <div className="detail"><h4>{FORMS[f][0]}</h4>{FORMS[f][2]}</div>
+    <div className="sec-title" style={{ marginTop: 0 }}>Forms</div>
+    <div className="fcards" role="group" aria-label="Forms of precipitation">{FORMS.map(([n, k], i) => <button type="button" key={n} className={"fcard" + (i === f ? " on" : "")} aria-pressed={i === f} onClick={() => setF(i)}><img src={"assets/img/forms/" + k + ".jpg"} alt={FORM_ALT[k]} loading="lazy" width="300" height="400" /><span>{n}</span></button>)}</div>
+    <div className="detail"><h4>{FORMS[f][0]}</h4>{FORMS[f][2]}<p className="note" style={{ fontSize: 12, marginTop: 6 }}>Photo: {cr[0]}, {cr[1]}, via <a href={cr[2]} target="_blank" rel="noopener noreferrer">Wikimedia Commons</a>.</p></div>
     <div className="sec-title">Types — by what lifts the air</div>
     <Seg value={t} onChange={setT} options={TYPES.map((x, i) => [i, x[0]])} />
-    <div className="wg-row" style={{ marginTop: 10 }}>
-      <div className="wg-col" style={{ maxWidth: 340 }}><div style={{ border: "1px solid #e8e4dc", borderRadius: 8, overflow: "hidden" }}>{TYPES[t][1]}</div></div>
-      <div className="wg-col"><div className="detail" style={{ marginTop: 0 }}><h4>{TYPES[t][0]} precipitation</h4><p>{TYPES[t][2]}</p><p style={{ marginTop: 6 }}><b>Indian example:</b> {TYPES[t][3]}</p></div></div>
+    <div className="wx-row">
+      <div className="wx-fig">{TYPES[t][1]}</div>
+      <div className="detail wx-text"><h4>{TYPES[t][0]} precipitation</h4><p>{TYPES[t][2]}</p><p style={{ marginTop: 6 }}><b>Indian example:</b> {TYPES[t][3]}</p></div>
     </div>
   </Box>;
 }
@@ -1341,6 +1448,61 @@ function SoilLayer({ m }) {
   );
 }
 
+/* ============ S03: every registered rain gauge in India (India-WRIS register), by owner ============ */
+const RG_COLORS = ["#d55e00", "#0072b2"];       // central and inter-state bodies, state departments (Okabe–Ito, colour-blind safe)
+function GaugeMap() {
+  const [m, setM] = useState(null);
+  const rg = useAtlasLayer("raingauges"), st = useAtlasLayer("states");
+  const [view, setView] = useState("agency");
+  const [sel, setSel] = useState(null);
+  const [info, setInfo] = useState(null);
+  useEffect(() => { fetch("data/india_map.json").then(r => r.json()).then(setM).catch(() => setM(false)); }, []);
+  if (m === false || rg === false) return <Box title="Rain gauges across India">Map data could not load.</Box>;
+  if (!m || !rg) return <Box title="Rain gauges across India" kind="Interactive map">Loading…</Box>;
+  const cat = [0, 1].map(c => rg.agencies.filter(a => a.cat === c).reduce((s, a) => s + a.count, 0));
+  const rows = view === "agency"
+    ? rg.agencies.map((a, i) => ({ k: i, n: a.n, c: a.count, sub: rg.cats[a.cat] }))
+    : rg.states.map((s, i) => ({ k: i, n: s.n, c: s.count, sub: s.per1000km2 != null ? s.per1000km2.toFixed(1) + " per 1,000 km² (1 per " + fmt(1000 / s.per1000km2) + " km²)" : "" }));
+  const max = Math.max(...rows.map(r => r.c));
+  const keyOf = i => (view === "agency" ? rg.ag[i] : rg.st[i]);
+  const shown = sel === null ? rg.plotted : rg.ag.filter((_, i) => keyOf(i) === sel).length;
+  const text = i => `${rg.name[i] || "Unnamed station"} · ${rg.agencies[rg.ag[i]].n} · ${rg.district[i] ? rg.district[i] + ", " : ""}${rg.states[rg.st[i]].n}`;
+  const selRow = sel === null ? null : rows.find(r => r.k === sel);
+  const dens = rg.plotted / rg.areaKm2 * 1000;
+  return (
+    <Box title="Rain gauges across India" kind="Interactive map">
+      <div className="wg-row">
+        <div className="wg-col" style={{ flex: "1 1 360px" }}>
+          <MapFrame m={m} label="Map of India showing the location of registered rain gauges">{() => <>
+            {st && <g>{st.states.map(s => <path key={s.n} d={s.d} fill="none" style={{ stroke: "var(--rule)" }} strokeWidth="0.5" />)}</g>}
+            <g>{rg.x.map((x, i) => { const on = sel === null || keyOf(i) === sel; return <circle key={i} cx={x} cy={rg.y[i]} r={on ? 1.15 : 0.7} fillOpacity={on ? 0.7 : 0.08} style={{ fill: RG_COLORS[rg.agencies[rg.ag[i]].cat] }} onMouseEnter={() => setInfo(text(i))} onClick={() => setInfo(text(i))} />; })}</g>
+          </>}</MapFrame>
+          <p className="note" aria-live="polite" style={{ minHeight: 44 }}>{info || "Hover or tap a dot to read the station's name, owner and district."}</p>
+        </div>
+        <div className="wg-col" style={{ flex: "1 1 300px" }}>
+          <div className="kpis"><Kpi v={fmt(rg.plotted)} l="registered rain gauges plotted" /><Kpi v={rg.agencies.length} l="owning agencies" /><Kpi v={"1 per " + fmt(1000 / dens) + " km²"} l="average density (register only)" /></div>
+          <div className="atlas-legend" role="list" aria-label="Who owns the gauges">
+            {[0, 1].map(c => <div role="listitem" key={c} className="atlas-legend__row"><span className="atlas-legend__sw atlas-legend__sw--dot" style={{ background: RG_COLORS[c] }} /> {rg.cats[c]}: <b>{fmt(cat[c])}</b> ({Math.round(cat[c] / rg.plotted * 100)} %)</div>)}
+          </div>
+          <div role="radiogroup" className="atlas-seg" aria-label="Group the list by">
+            {[["agency", "By owner"], ["state", "By state"]].map(([k, t]) => <label key={k} className={"atlas-seg__opt" + (view === k ? " is-on" : "")}><input type="radio" name="rg-view" value={k} checked={view === k} onChange={() => { setView(k); setSel(null); }} /> {t}</label>)}
+          </div>
+          <p className="note" style={{ margin: "8px 0 4px" }}>{sel === null ? "Select a row to show only its gauges on the map." : <>Showing <b>{fmt(shown)}</b> gauges of <b>{selRow.n}</b>. <button type="button" className="atlas-link" onClick={() => setSel(null)}>Show all</button></>}</p>
+          <div className="atlas-list" role="list">
+            {rows.map(r => <button type="button" role="listitem" key={r.k} className={"atlas-list__row" + (sel === r.k ? " is-on" : "")} aria-pressed={sel === r.k} onClick={() => setSel(sel === r.k ? null : r.k)}>
+              <span className="atlas-list__name">{r.n}</span><b>{fmt(r.c)}</b>
+              <span className="atlas-list__bar"><span style={{ width: (r.c / max * 100) + "%", background: view === "agency" ? RG_COLORS[rg.agencies[r.k].cat] : "var(--river)" }} /></span>
+              {r.sub && <span className="atlas-list__sub">{r.sub}</span>}
+            </button>)}
+          </div>
+        </div>
+      </div>
+      <p className="note" style={{ fontSize: 12.5, marginTop: 8 }}><b>What this is not.</b> This is the rainfall-station register on India-WRIS (central and state water agencies). It does not list IMD's own network, which the lecture slides put at about 1,367 automatic and 9,327 non-recording stations (no year given), and it will miss gauges run by universities, farms and others. Treat the counts as a lower bound, and the density as the registered density only. For comparison, IS 4987 asks for one gauge per 520 km² on plains and one per 130 km² in hilly regions with heavy rain. {fmt(rg.noCoordinates)} entries had unusable coordinates and are not plotted.</p>
+      <SourceLine d={rg} />
+    </Box>
+  );
+}
+
 const ATLAS_LAYERS = [["rivers", "Rivers"], ["bounds", "States and river basins"], ["rain", "Rainfall"], ["evap", "Evaporation"], ["soil", "Soil moisture"], ["dams", "Dams and reservoirs"]];
 function WaterAtlas() {
   const [m, setM] = useState(null);
@@ -1372,6 +1534,7 @@ function WaterAtlas() {
 }
 
 export const WIDGETS = {
+  gaugemap: GaugeMap,
   indiamap: WaterAtlas,
   wateratlas: WaterAtlas,
   abstractions: Abstractions,

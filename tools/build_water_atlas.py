@@ -307,7 +307,54 @@ def build_soilmoisture():
                 {"series": ["annual", "monsoon", "dry"], "round": 3})
 
 
-LAYERS = {"states": build_states, "basins": build_basins, "rainfall": build_rainfall, "dams": build_dams, "evaporation": build_evaporation, "soilmoisture": build_soilmoisture}
+# ---------------------------------------------------------------- rain gauges (India-WRIS rainfall station register)
+CENTRAL = {"CWC", "NCA", "National Institute of Hydrology, Roorkee", "Damodar Valley Corporation(DVC)", "Bhakra Beas Management Board, Chandigarh"}
+
+
+def build_raingauges():
+    import pandas as pd
+    feats = []
+    for f in (f"{RAW}/wris_rainstations.json", f"{RAW}/wris_rainstations2.json"):
+        feats += json.load(open(f, encoding="utf8")).get("features", [])
+    rows, bad = [], 0
+    for f in feats:
+        a, g = f["attributes"], f.get("geometry") or {}
+        lon, lat = g.get("x"), g.get("y")
+        if lon is None or lat is None or not (66 < lon < 100 and 5 < lat < 38):
+            bad += 1
+            continue
+        rows.append({"lon": lon, "lat": lat, "name": a.get("station_name") or "", "agency": a.get("agency_name") or "not stated", "district": a.get("district_name") or ""})
+    df = gpd.GeoDataFrame(rows, geometry=gpd.points_from_xy([r["lon"] for r in rows], [r["lat"] for r in rows]), crs="EPSG:4326")
+    states = gpd.read_file(f"{RAW}/Admin2.shp").to_crs("EPSG:4326")
+    j = gpd.sjoin(df, states[["ST_NM", "geometry"]], how="left", predicate="within")
+    j = j[~j.index.duplicated()]
+    df["state"] = j["ST_NM"].fillna("outside state boundaries (coast or border)")
+    area = states.to_crs("EPSG:6933").assign(a=lambda d: d.geometry.area / 1e6).set_index("ST_NM")["a"].to_dict()
+    ag = df.groupby("agency").size().sort_values(ascending=False)
+    agencies = [{"n": n, "cat": 0 if n in CENTRAL else 1, "count": int(c)} for n, c in ag.items()]
+    aidx = {a["n"]: i for i, a in enumerate(agencies)}
+    sg = df.groupby("state").size().sort_values(ascending=False)
+    top = df.groupby(["state", "agency"]).size().reset_index(name="c").sort_values("c", ascending=False)
+    sts = []
+    for n, c in sg.items():
+        t = top[top.state == n].head(3)
+        sts.append({"n": n, "count": int(c), "areaKm2": round(area.get(n, 0)), "per1000km2": round(c / area[n] * 1000, 2) if area.get(n) else None, "top": [[r.agency, int(r.c)] for r in t.itertuples()]})
+    sidx = {s["n"]: i for i, s in enumerate(sts)}
+    total_area = sum(area.values())
+    out = {"source": "India-WRIS (CWC / NWIC), rainfall station register, ArcGIS service NWIC/rf_station, layer 4 'Rainfall Station'; states assigned from DataMeet boundaries",
+           "licence": "India-WRIS copyright policy: free reproduction with the source acknowledged, accurately and not misleadingly",
+           "years": "register as served by India-WRIS; it does not state a date", "built": BUILT,
+           "cats": ["Central and inter-state bodies", "State government departments"],
+           "total": len(feats), "plotted": len(df), "noCoordinates": bad, "areaKm2": round(total_area), "agencies": agencies, "states": sts,
+           "x": [P(r.lon, r.lat)[0] for r in df.itertuples()], "y": [P(r.lon, r.lat)[1] for r in df.itertuples()],
+           "ag": [aidx[a] for a in df["agency"]], "st": [sidx[s] for s in df["state"]], "name": list(df["name"]), "district": list(df["district"])}
+    write("raingauges", out)
+    print("stations:", len(feats), "| plotted:", len(df), "| without usable coordinates:", bad, "| agencies:", len(agencies), "| states:", len(sts), "| per 1000 km2 (all India):", round(len(df) / total_area * 1000, 2))
+    print("by category:", {out["cats"][c]: sum(a["count"] for a in agencies if a["cat"] == c) for c in (0, 1)})
+    print("outside boundaries:", int((df["state"].str.startswith("outside")).sum()))
+
+
+LAYERS = {"states": build_states, "basins": build_basins, "rainfall": build_rainfall, "dams": build_dams, "evaporation": build_evaporation, "soilmoisture": build_soilmoisture, "raingauges": build_raingauges}
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()

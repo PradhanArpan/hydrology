@@ -12,7 +12,7 @@ All `U1_*` files are **synthetic teaching data**, generated for practice (script
 
 ## Water atlas layers (`data/atlas/`, S01 workbench "Water atlas of India")
 
-Built by `python tools/build_water_atlas.py` (all layers) or `--layer states|basins|rainfall|dams|evaporation|soilmoisture`. Raw downloads live in the git-ignored `raw/` folder. Each file records `source`, `licence`, `years` and `built`, and all coordinates use the projection constants of `tools/build_india_map.py`, so the layers line up with `data/india_map.json`.
+Built by `python tools/build_water_atlas.py` (all layers) or `--layer states|basins|rainfall|dams|evaporation|soilmoisture|raingauges`. Raw downloads live in the git-ignored `raw/` folder. Each file records `source`, `licence`, `years` and `built`, and all coordinates use the projection constants of `tools/build_india_map.py`, so the layers line up with `data/india_map.json`.
 
 | Layer | File | Source | Licence / terms |
 | --- | --- | --- | --- |
@@ -21,6 +21,7 @@ Built by `python tools/build_water_atlas.py` (all layers) or `--layer states|bas
 | River basins | `atlas/basins.json` | India-WRIS (CWC / NRSC), ArcGIS service `Common/Basin_WRP`, layer 0 "BasinCWC" | India-WRIS copyright policy: material may be reproduced free of charge, accurately and not in a misleading context, with the source acknowledged |
 | Rainfall | `atlas/rainfall.json` | IMD Pune 0.25° gridded daily rainfall (Pai et al. 2014), 1991–2020, read from the `.GRD` files that `imdlib` downloads; annual and June–September means, averaged to 0.5° cells | IMD data for non-commercial and educational use with acknowledgement; confirm IMD's data supply policy before reusing outside the course |
 | Dams and reservoirs | `atlas/dams.json` | India-WRIS (CWC / NWIC), ArcGIS service `DataDownload/Water_Resource_Project_Data`, layer 3 "DAM" (the National Register of Large Dams); the service does not state its edition | India-WRIS copyright policy (as above) |
+| Rain gauges | `atlas/raingauges.json` | India-WRIS (CWC / NWIC), ArcGIS service `NWIC/rf_station`, layer 4 "Rainfall Station" (10,392 registered stations, 33 agencies; 10,387 with usable coordinates); each station's state is taken from the DataMeet boundaries; the S03 "Rain gauges across India" tool | India-WRIS copyright policy (as above) |
 | Evaporation | `atlas/evaporation.json` | NASA POWER 30-year climatology (January 1991 to December 2020), parameter `EVLAND` (land evaporation, mm/day, times 365) from the MERRA-2 **reanalysis**; native cells 0.5° × 0.625°; POWER Climatology API v2.10.1 | NASA POWER data are open; NASA asks that publications cite the service, version and access date, and asks to be told of redistribution |
 | Soil moisture | `atlas/soilmoisture.json` | NASA POWER, same climatology, parameter `GWETTOP` (surface soil wetness, 0 to 1 fraction of saturation, **not** m³/m³): annual mean, monsoon (June–September) and dry season (December–May) | as above |
 
@@ -35,3 +36,5 @@ Notes on the dam data: every entry in the service has coordinates (6,644 plotted
 The workbench card pictures in `assets/img/workbench/` are screenshots of each tool: serve the site (`python -m http.server 8765`) and run `python tools/tool_shots.py`.
 
 Evaporation and soil moisture are model (reanalysis) estimates from NASA MERRA-2 through POWER, chosen because they are keyless, small (about 1.5 MB of downloads) and cover the whole country. ISRO's EOS-04 soil moisture (Bhoonidhi) is the satellite alternative for soil moisture; it needs a Bhoonidhi login and several GB for all India, and covers only 2022 onwards.
+
+The rain-gauge register does not include IMD's own stations (IMD is not an agency in it), and the register is not a census of all gauges in India: counts are a lower bound. Raw download for the stations: `.../NWIC/rf_station/MapServer/4/query?where=1=1&outFields=station_name,station_code,agency_name,agency_id,state_name,state_code,district_name,telemetry,station_type,station_data_type_new&returnGeometry=true&outSR=4326&resultRecordCount=10000&f=json` (saved as `raw/wris_rainstations.json`), and again with `&resultOffset=10000` (saved as `raw/wris_rainstations2.json`). The photos on the S02 forms cards are Wikimedia Commons files; their authors and licences are shown under the photos and listed in `assets/img/forms/CREDITS.md`.
