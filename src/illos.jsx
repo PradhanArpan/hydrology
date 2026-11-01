@@ -344,17 +344,65 @@ function WeighingDiagram() {
     <line x1="235" y1="160" x2="270" y2="160" stroke="#7a5a12" strokeDasharray="3 2" />
   </svg>;
 }
-function Gauges() {
-  const [k, setK] = useState("symons");
-  const T = { symons: ["Symons' gauge (non-recording)", "IMD's standard non-recording gauge. Rain passes through a 127 mm funnel into a bottle and is measured daily at 08:30 IST with a graduated glass to 0.1 mm. Gives only the 24-hour total."],
-    syphon: ["Float (natural syphon) gauge — recording", "IMD's standard recording gauge. A float in a chamber rises with the collected water and moves a pen on a clock-driven drum; at 10 mm a syphon empties the chamber and the pen drops to zero. The chart is a saw-tooth mass curve."],
-    weigh: ["Weighing-bucket gauge — recording", "The catch is weighed continuously by a spring balance or load cell, so the chart is directly a mass curve. Records rain, snow and hail."] };
-  return <Illo title="Rain gauges — how each one works" kind="Interactive">
-    <div className="seg" style={{ marginBottom: 10 }}>{Object.keys(T).map(x => <button key={x} className={k === x ? "on" : ""} onClick={() => setK(x)}>{T[x][0].split(" (")[0].split(" —")[0]}</button>)}</div>
-    {k === "syphon" ? <SyphonGauge /> : <div className="wg-row" style={{ alignItems: "flex-start" }}><div className="wg-col" style={{ maxWidth: 360 }}>{k === "symons" ? <SymonsDiagram /> : <WeighingDiagram />}</div><div className="wg-col"><div className="detail" style={{ marginTop: 0 }}><h4>{T[k][0]}</h4>{T[k][1]}</div></div></div>}
-    {k === "syphon" && <div className="detail"><h4>{T.syphon[0]}</h4>{T.syphon[1]}</div>}
-  </Illo>;
+// Weighing-bucket gauge simulation: the catch is weighed continuously, so the pen draws the mass curve directly (no resets).
+function WeighingGauge() {
+  const [I, setI] = useState(12); const [run, setRun] = useState(false); const [t, setT] = useState(0); const [trace, setTrace] = useState([[0, 0]]);
+  const CAP = 150, SIM = 10; // bucket holds 150 mm of rain; 1 s real = 10 simulated minutes
+  useEffect(() => {
+    if (!run) return;
+    const id = setInterval(() => setT(tt => { const nt = tt + SIM / 10; setTrace(tr => { const last = tr[tr.length - 1][1]; return last >= CAP ? tr : [...tr, [nt, Math.min(CAP, last + I * (SIM / 10) / 60)]].slice(-600); }); return nt; }), 100);
+    return () => clearInterval(id);
+  }, [run, I]);
+  const total = trace[trace.length - 1][1], hours = t / 60, full = total >= CAP;
+  const reset = () => { setRun(false); setT(0); setTrace([[0, 0]]); };
+  const W = 360, H = 190, tmax = Math.max(180, t), cmax = Math.max(30, Math.ceil(total / 10) * 10 + 10);
+  const px = tt => 34 + tt / tmax * (W - 46), py = c => H - 22 - c / cmax * (H - 36);
+  const d = trace.map(([tt, c], i) => (i ? "L" : "M") + px(tt).toFixed(1) + " " + py(c).toFixed(1)).join("");
+  const sink = Math.min(46, total / CAP * 46);                       // spring compresses as the catch gets heavier
+  const level = Math.min(64, total / CAP * 64), sh = (82 - sink) / 6;
+  return <div className="wg-row" style={{ alignItems: "flex-start" }}>
+    <div className="wg-col" style={{ maxWidth: 300 }}><svg viewBox="0 0 280 320" role="img" aria-label="Weighing-bucket rain gauge: the bucket sinks as rain collects">
+      <rect width="280" height="320" fill="#fff" />
+      <path d="M60 16 L220 16 L170 62 L110 62Z" fill="#f4f2ee" stroke="#3a332c" strokeWidth="2" />
+      {run && !full && <Rain x0={85} x1={195} y0={-8} n={7} len={10} />}
+      <g transform={`translate(0 ${sink})`}>
+        <rect x="80" y="100" width="120" height="84" rx="6" fill="#eaf5fa" stroke="#1f6f8f" strokeWidth="2.2" />
+        <rect x="82" y={182 - level} width="116" height={level} fill="#8dbdd0" />
+        <text x="140" y="124" fontSize="12" textAnchor="middle" fill="#1f6f8f">bucket + catch</text>
+        <rect x="70" y="184" width="140" height="8" fill="#8d8273" />
+      </g>
+      <path d={`M110 ${192 + sink} l9 ${sh} l-18 ${sh} l18 ${sh} l-18 ${sh} l18 ${sh} l-9 ${sh}`} stroke="#3a332c" strokeWidth="2.2" fill="none" />
+      <path d={`M170 ${192 + sink} l9 ${sh} l-18 ${sh} l18 ${sh} l-18 ${sh} l18 ${sh} l-9 ${sh}`} stroke="#3a332c" strokeWidth="2.2" fill="none" />
+      <rect x="60" y="274" width="160" height="16" fill="#8d8273" /><text x="140" y="308" fontSize="11.5" textAnchor="middle" fill="#3a332c">springs / load cell (weigh the catch)</text>
+      <line x1="205" y1={146 + sink} x2="240" y2={146 + sink} stroke="#9a3b1a" strokeWidth="2" /><circle cx="240" cy={146 + sink} r="4" fill="#9a3b1a" /><text x="246" y={134 + sink} fontSize="11" fill="#9a3b1a">pen</text>
+    </svg></div>
+    <div className="wg-col">
+      <label className="f">Rain intensity: <b>{I} mm/h</b> (change it while it runs)<input type="range" min="0" max="60" value={I} onChange={e => setI(+e.target.value)} /></label>
+      <div className="btn-row" style={{ marginBottom: 8 }}><button className="btn" onClick={() => setRun(!run)} disabled={full}>{run ? "Pause" : "Start rain"}</button><button className="btn ghost" onClick={reset}>Empty the bucket</button></div>
+      <svg viewBox={`0 0 ${W} ${H}`} style={{ background: "#fffdf6", border: "1px solid #e8e4dc", borderRadius: 6 }} role="img" aria-label="Mass curve drawn by the gauge">
+        {[0, 1, 2, 3, 4].map(k => { const c = cmax * k / 4; return <g key={k}><line x1="34" x2={W - 12} y1={py(c)} y2={py(c)} stroke="#efe6cf" /><text x="30" y={py(c) + 3} fontSize="8.5" textAnchor="end" fill="#8a7a62">{Math.round(c)}</text></g>; })}
+        <text x="6" y="12" fontSize="9" fill="#8a7a62">accumulated rain (mm)</text><text x={W - 12} y={H - 6} fontSize="9" textAnchor="end" fill="#8a7a62">time (h)</text>
+        <path d={d} stroke="#9a3b1a" strokeWidth="2" fill="none" />
+      </svg>
+      <div className="kpis"><Kpi v={hours.toFixed(1) + " h"} l="Simulated time" /><Kpi v={total.toFixed(1) + " mm"} l="Total catch (read straight off the chart)" /><Kpi v={full ? "full" : (CAP - total).toFixed(0) + " mm"} l="Room left in the bucket" /></div>
+      <p className="note">There is no sawtooth here: the bucket is never emptied by the gauge, so the pen draws the mass curve directly. Steeper = heavier rain; flat = dry spell. The slope of the line is the intensity. A weighing gauge also records snow and hail, because it weighs whatever falls in. Change the intensity while it runs to see the slope change.</p>
+    </div>
+  </div>;
 }
+function SymonsOnly() {
+  return <Illo title="Symons' gauge — how it works" kind="Interactive"><div className="wg-row" style={{ alignItems: "flex-start" }}>
+    <div className="wg-col" style={{ maxWidth: 360 }}><SymonsDiagram /></div>
+    <div className="wg-col"><div className="detail" style={{ marginTop: 0 }}><h4>Symons' gauge (non-recording)</h4>IMD's standard non-recording gauge. Rain passes through a 127 mm funnel into a bottle and is measured daily at 08:30 IST with a graduated glass to 0.1 mm. It gives only the 24-hour total, not when or how hard the rain fell. The recording gauges (tipping-bucket, weighing-bucket and float) are covered below.</div></div>
+  </div></Illo>;
+}
+function FloatSim() {
+  return <Illo title="Float (natural syphon) gauge — simulation" kind="Interactive"><SyphonGauge /></Illo>;
+}
+function WeighSim() {
+  return <Illo title="Weighing-bucket gauge — simulation" kind="Interactive"><WeighingGauge /></Illo>;
+}
+
+const Gauges = SymonsOnly;
 
 /* ================= S03: a storm and a sparse network ================= */
 const CATCH = [[0, 0], [2.2, -0.6], [4.6, -0.2], [6.8, 0.9], [8.1, 2.8], [8.4, 5.0], [7.3, 6.9], [5.6, 7.8], [3.4, 7.6], [1.7, 6.4], [0.4, 4.6], [-0.5, 2.4]];
@@ -543,4 +591,4 @@ function RasConcept() {
   </Illo>;
 }
 
-export const ILLOS = { cycle: HydroCycle, horton: Horton, catchment: Catchment, indiawater: IndiaWater, gauges: Gauges, stormnet: StormNetwork, threemethods: ThreeMethods, dad: DAD, hmstour: HmsTour, hmselements: HmsElements, qgistour: QgisTour, rasconcept: RasConcept };
+export const ILLOS = { floatgauge: FloatSim, weighgauge: WeighSim, cycle: HydroCycle, horton: Horton, catchment: Catchment, indiawater: IndiaWater, gauges: Gauges, stormnet: StormNetwork, threemethods: ThreeMethods, dad: DAD, hmstour: HmsTour, hmselements: HmsElements, qgistour: QgisTour, rasconcept: RasConcept };

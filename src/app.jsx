@@ -14,6 +14,9 @@ const DOCK_TOOLS = {
   abstractions: "Where does a storm's rain go?",
   dalton: "Dalton's law",
   tipping: "Tipping-bucket rain gauge",
+  gaugemap: "Rain gauges across India",
+  weighgauge: "Weighing-bucket gauge",
+  floatgauge: "Float (syphon) gauge",
   network: "Optimum number of rain gauges",
   dmc: "Double mass curve",
   thiessen: "Thiessen polygons",
@@ -33,7 +36,7 @@ const DOCK_TOOLS = {
 
 // Icon shown on a tool's placeholder picture until a real screenshot exists.
 const TOOL_ICON = {
-  waterbudget: Calculator, abstractions: Droplets, dalton: Wind, tipping: CloudRain, network: MapIcon, dmc: LineChart,
+  waterbudget: Calculator, abstractions: Droplets, dalton: Wind, tipping: CloudRain, gaugemap: MapIcon, weighgauge: Calculator, floatgauge: Droplets, network: MapIcon, dmc: LineChart,
   thiessen: MapIcon, missing: Activity, storm: CloudRain, movavg: LineChart, risk: Calculator, idf: LineChart,
   d8: Layers, hortonfit: Droplets, phiindex: Calculator, scscn: Calculator, pencalc: Wind, indiamap: MapIcon, wateratlas: MapIcon
 };
