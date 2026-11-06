@@ -357,7 +357,7 @@
       ],
       "minutes": 50,
       "file": "labs/L11.md",
-      "enabled": false,
+      "enabled": true,
       "release": ""
     },
     {
@@ -373,7 +373,7 @@
       ],
       "minutes": 55,
       "file": "labs/L12.md",
-      "enabled": false,
+      "enabled": true,
       "release": ""
     },
     {
@@ -390,7 +390,7 @@
       ],
       "minutes": 45,
       "file": "labs/L13.md",
-      "enabled": false,
+      "enabled": true,
       "release": ""
     },
     {
@@ -407,7 +407,7 @@
       ],
       "minutes": 60,
       "file": "labs/L14.md",
-      "enabled": false,
+      "enabled": true,
       "release": ""
     },
     {
@@ -424,7 +424,7 @@
       ],
       "minutes": 50,
       "file": "labs/L15.md",
-      "enabled": false,
+      "enabled": true,
       "release": ""
     },
     {
@@ -442,7 +442,7 @@
       ],
       "minutes": 60,
       "file": "labs/L16.md",
-      "enabled": false,
+      "enabled": true,
       "release": ""
     },
     {
@@ -682,7 +682,7 @@
       "lab": "Find every 'loss' slot in an HMS subbasin: canopy, surface, loss method, ET",
       "keywords": "abstraction evaporation dalton",
       "file": "sessions/S10.md",
-      "enabled": false,
+      "enabled": true,
       "ready": true,
       "labs": [
         "L11"
@@ -704,7 +704,7 @@
       "lab": "Monthly Average evapotranspiration method in HMS from pan data",
       "keywords": "class A pan meyer formula",
       "file": "sessions/S11.md",
-      "enabled": false,
+      "enabled": true,
       "ready": true,
       "labs": [
         "L13"
@@ -726,7 +726,7 @@
       "lab": "Plot infiltrometer data; Initial & Constant loss in HMS",
       "keywords": "infiltrometer infiltration capacity",
       "file": "sessions/S12.md",
-      "enabled": false,
+      "enabled": true,
       "ready": true,
       "labs": [
         "L11",
@@ -749,7 +749,7 @@
       "lab": "Compute φ-index by hand, then match it with the HMS constant-rate loss",
       "keywords": "horton phi index w index",
       "file": "sessions/S13.md",
-      "enabled": false,
+      "enabled": true,
       "ready": true,
       "labs": [
         "L15"
@@ -770,7 +770,7 @@
       "lab": "Hargreaves / Priestley-Taylor ET in an HMS continuous simulation",
       "keywords": "lysimeter PET AET",
       "file": "sessions/S14.md",
-      "enabled": false,
+      "enabled": true,
       "ready": true,
       "labs": [
         "L13"
@@ -792,7 +792,7 @@
       "lab": "Penman PET in a spreadsheet; compare with the HMS ET method",
       "keywords": "penman blaney criddle",
       "file": "sessions/S15.md",
-      "enabled": false,
+      "enabled": true,
       "ready": true,
       "labs": [
         "L13"
@@ -813,7 +813,7 @@
       "lab": "SCS Curve Number loss and catchment parameters in HMS",
       "keywords": "runoff components curve number",
       "file": "sessions/S16.md",
-      "enabled": false,
+      "enabled": true,
       "ready": true,
       "labs": [
         "L16"
@@ -835,7 +835,7 @@
       "lab": "Run several storms through HMS and regress simulated runoff on rainfall",
       "keywords": "regression correlation",
       "file": "sessions/S17.md",
-      "enabled": false,
+      "enabled": true,
       "ready": true,
       "labs": [
         "L12",
@@ -858,7 +858,7 @@
       "lab": "Complete event model of the PBL catchment; compare with hand calculations",
       "keywords": "PBL milestone verification",
       "file": "sessions/S18.md",
-      "enabled": false,
+      "enabled": true,
       "ready": true,
       "labs": [
         "L14",
