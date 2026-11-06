@@ -2289,3 +2289,284 @@ kbd {
 .hc .hc-seep { animation: hc-seep 9s linear infinite; }
 svg.paused *, svg.paused { animation-play-state: paused !important; }
 @media (prefers-reduced-motion: reduce) { .hc * { animation: none !important; } }
+
+
+/* ---------- Instructor Admin Switchboard Modal ---------- */
+.admin-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(11, 20, 36, 0.75);
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  backdrop-filter: blur(5px);
+}
+.admin-modal {
+  width: 100%;
+  max-width: 840px;
+  background: var(--card-bg, #ffffff);
+  border: 1px solid var(--g200, #e2dcd2);
+  border-radius: 14px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-height: 88vh;
+}
+.admin-header {
+  padding: 16px 22px;
+  border-bottom: 1px solid var(--g200, #e2dcd2);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-surface, #faf8f5);
+}
+.admin-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-family: var(--serif);
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.admin-header-subtitle {
+  font-size: 12.5px;
+  color: var(--g600, #6c6356);
+  margin-top: 3px;
+}
+.admin-body {
+  overflow-y: auto;
+  padding: 18px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.admin-token-card {
+  background: var(--g100, #f3efe8);
+  border: 1px solid var(--g200, #e2dcd2);
+  border-radius: 10px;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.admin-token-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+.admin-token-input-row {
+  display: flex;
+  gap: 8px;
+}
+.admin-token-input {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--g300, #d8cfc2);
+  background: var(--card-bg, #fff);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 13px;
+  outline: none;
+}
+.admin-tabs {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--g200, #e2dcd2);
+  padding-bottom: 8px;
+}
+.admin-tab {
+  padding: 5px 13px;
+  border-radius: 20px;
+  border: 1px solid transparent;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--g600, #6c6356);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.admin-tab:hover {
+  background: var(--g100, #f3efe8);
+}
+.admin-tab.active {
+  background: var(--navy, #0f1f3d);
+  color: #fff;
+  font-weight: 600;
+}
+.admin-batch-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 9px 13px;
+  background: var(--bg-surface, #faf8f5);
+  border: 1px solid var(--g200, #e2dcd2);
+  border-radius: 8px;
+  font-size: 12.5px;
+}
+.admin-batch-buttons {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.admin-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.admin-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: var(--card-bg, #ffffff);
+  border: 1px solid var(--g200, #e2dcd2);
+  gap: 12px;
+}
+.admin-row.modified {
+  border-color: #c8973a;
+  background: rgba(200, 151, 58, 0.08);
+}
+.admin-row-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+.admin-row-title {
+  font-weight: 500;
+  font-size: 13.5px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.admin-row-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.admin-toggle {
+  position: relative;
+  display: inline-block;
+  width: 42px;
+  height: 23px;
+  flex-shrink: 0;
+}
+.admin-toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.admin-toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background-color: var(--g300, #d8cfc2);
+  transition: 0.2s;
+  border-radius: 23px;
+}
+.admin-toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 17px;
+  width: 17px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: 0.2s;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+.admin-toggle input:checked + .admin-toggle-slider {
+  background-color: var(--green, #2d6a4f);
+}
+.admin-toggle input:checked + .admin-toggle-slider:before {
+  transform: translateX(19px);
+}
+.admin-footer {
+  padding: 14px 22px;
+  border-top: 1px solid var(--g200, #e2dcd2);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-surface, #faf8f5);
+}
+.admin-btn {
+  padding: 7px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+.admin-btn.primary {
+  background: var(--green, #2d6a4f);
+  color: #fff;
+}
+.admin-btn.primary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.admin-btn.secondary {
+  background: var(--card-bg, #fff);
+  border-color: var(--g300, #d8cfc2);
+  color: var(--text);
+}
+.admin-btn.secondary:hover {
+  background: var(--g100, #f3efe8);
+}
+.admin-pill-btn {
+  background: var(--navy, #0f1f3d);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-left: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: background 0.15s ease;
+}
+.admin-pill-btn:hover {
+  background: #18315b;
+}
+.admin-status-msg {
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 12.5px;
+}
+.admin-status-msg.success {
+  background: #e8f5e9;
+  color: #1b5e20;
+  border: 1px solid #c8e6c9;
+}
+.admin-status-msg.error {
+  background: #ffebee;
+  color: #b71c1c;
+  border: 1px solid #ffcdd2;
+}
+.admin-status-msg.info {
+  background: #e3f2fd;
+  color: #0d47a1;
+  border: 1px solid #bbdefb;
+}

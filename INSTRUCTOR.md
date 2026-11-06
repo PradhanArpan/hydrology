@@ -1,12 +1,25 @@
 # Instructor guide
 
-## Releasing sessions
+## Releasing sessions (Live from the Website)
 
-Each theory session **and each lab** in `sessions.json` has an `enabled` flag (sessions are under `"sessions"`, labs under `"labs"`). Set it to `true` to release the session; students see locked sessions as "Not yet released". You can also put a date in `release` (e.g. `"release": "14 Jan"`) to show "Opens 14 Jan" on the locked card.
+You can enable or disable sessions and software labs directly from the live website without editing JSON files by hand:
 
-Edit directly on GitHub: open `sessions.json` › pencil icon › change `false` to `true` › *Commit changes*. Pages updates within a minute or two.
+1. **Open the Admin Switchboard**:
+   - Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd> anywhere on the site, or
+   - Click the **Sliders icon** (<Icon as={SlidersHorizontal} size={16} />) in the top header, or
+   - In preview mode (`?preview=1`), click **⚡ Open Release Switchboard**, or
+   - Open the menu drawer and choose **Instructor Admin Panel**.
+2. **Configure your GitHub Token once**:
+   - In the modal, click **Configure Token** and enter a GitHub Personal Access Token (PAT) with repository write permission for `PradhanArpan/hydrology`.
+   - The token is stored purely in your browser's local storage (never stored in the repo or transmitted to any server other than `api.github.com`).
+3. **Toggle Content**:
+   - Use the **Quick Actions** buttons to enable/disable entire units (e.g. *Enable Unit 2*), or flip individual switches next to any session or lab.
+4. **Publish**:
+   - Click **Publish to GitHub**. The site commits the update directly to the `main` branch.
+   - GitHub Pages automatically rebuilds and deploys the new release worldwide within ~45–60 seconds.
+   - You can also click **Export JSON** to download `sessions.json` for offline editing.
 
-**Preview locked sessions:** open the portal once as `index.html?preview=1` (or add `?preview` after the `#/…` route). Preview stays on for that browser tab. Locking is a display convenience, not security — the files are in the repository.
+**Preview locked sessions without releasing:** open the portal once as `index.html?preview=1` (or add `?preview` after the `#/…` route). Preview stays on for that browser tab. Locking is a display convenience, not security — the files are in the repository.
 
 ## Editing a session
 

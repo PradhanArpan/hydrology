@@ -21,6 +21,10 @@ The course delivery portal for **CE633 Hydrology and Water Resources Engineering
    - A single-click `🖨️ Print notes` button formats theory sessions into clean, publication-ready study handouts (hiding sidebars and UI controls via dedicated `@media print` rules).
 6. **Enhanced Lab Experience**:
    - Step-by-step interactive stepper with desktop-sticky navigation, "Show all steps" toggle, zoomable modal screenshot lightbox, and progress checklists.
+7. **Instructor Release Switchboard (In-Browser Admin Modal)**:
+   - Direct in-browser admin panel (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd>, header Sliders button, or Preview bar button).
+   - Allows the instructor to toggle any session or lab, or enable/disable entire units with batch action buttons.
+   - Connects directly to the GitHub REST API using a browser-stored Personal Access Token (PAT) to commit updates to `main` branch; triggers automated GitHub Pages deployment without opening Git or GitHub.com. Includes an offline JSON export fallback.
 
 ---
 

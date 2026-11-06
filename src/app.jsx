@@ -4,7 +4,7 @@ import { createPortal } from "react-dom";
 import { renderMd, enhance, esc } from "./md.js";
 import { WIDGETS } from "./widgets.jsx";
 import { ILLOS } from "./illos.jsx";
-import { Menu, Search, Sun, Moon, X, Check, Printer, Lock, Laptop, ChevronRight, SquareArrowOutUpRight, Calculator, CloudRain, Droplets, Activity, LineChart, Layers, Map as MapIcon, Wind } from "lucide-react";
+import { Menu, Search, Sun, Moon, X, Check, Printer, Lock, Laptop, ChevronRight, SquareArrowOutUpRight, Calculator, CloudRain, Droplets, Activity, LineChart, Layers, Map as MapIcon, Wind, SlidersHorizontal, Key, RefreshCw, UploadCloud, Download } from "lucide-react";
 
 const ALL_COMPONENTS = { ...ILLOS, ...WIDGETS };
 
@@ -418,8 +418,416 @@ function SearchModal({ data, open, onClose, preview }) {
   );
 }
 
+/* ---------- Instructor Admin Switchboard Modal ---------- */
+function toBase64Utf8(str) {
+  const bytes = new TextEncoder().encode(str);
+  let binary = "";
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+function AdminModal({ data, open, onClose, onDataUpdate }) {
+  const [token, setToken] = useState(() => localStorage.getItem("ce633-gh-pat") || "");
+  const [inputToken, setInputToken] = useState(token);
+  const [showTokenSettings, setShowTokenSettings] = useState(!token);
+  const [userLogin, setUserLogin] = useState(null);
+  const [activeTab, setActiveTab] = useState("all");
+  const [localSessions, setLocalSessions] = useState(() => data.sessions.map(s => ({ ...s })));
+  const [localLabs, setLocalLabs] = useState(() => data.labs.map(l => ({ ...l })));
+  const [status, setStatus] = useState(null);
+  const [isPublishing, setIsPublishing] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setLocalSessions(data.sessions.map(s => ({ ...s })));
+      setLocalLabs(data.labs.map(l => ({ ...l })));
+      setStatus(null);
+      if (token) verifyToken(token);
+    }
+  }, [open, data]);
+
+  const verifyToken = async (pat) => {
+    try {
+      const res = await fetch("https://api.github.com/user", {
+        headers: {
+          Authorization: `Bearer ${pat.trim()}`,
+          Accept: "application/vnd.github.v3+json"
+        }
+      });
+      if (res.ok) {
+        const u = await res.json();
+        setUserLogin(u.login);
+      } else {
+        setUserLogin(null);
+      }
+    } catch (e) {
+      setUserLogin(null);
+    }
+  };
+
+  const handleSaveToken = () => {
+    const t = inputToken.trim();
+    if (!t) return;
+    localStorage.setItem("ce633-gh-pat", t);
+    setToken(t);
+    setShowTokenSettings(false);
+    verifyToken(t);
+    setStatus({ type: "info", text: "Token saved in browser storage." });
+  };
+
+  const handleClearToken = () => {
+    localStorage.removeItem("ce633-gh-pat");
+    setToken("");
+    setInputToken("");
+    setUserLogin(null);
+    setShowTokenSettings(true);
+    setStatus({ type: "info", text: "Token cleared." });
+  };
+
+  const toggleSession = (id) => {
+    setLocalSessions(prev => prev.map(s => s.id === id ? { ...s, enabled: !s.enabled } : s));
+  };
+
+  const toggleLab = (id) => {
+    setLocalLabs(prev => prev.map(l => l.id === id ? { ...l, enabled: !l.enabled } : l));
+  };
+
+  const batchUnit = (unitNum, enableVal) => {
+    setLocalSessions(prev => prev.map(s => s.unit === unitNum ? { ...s, enabled: enableVal } : s));
+    setLocalLabs(prev => prev.map(l => l.unit === unitNum ? { ...l, enabled: enableVal } : l));
+  };
+
+  const changedSessions = useMemo(() => {
+    return localSessions.filter(ls => {
+      const orig = data.sessions.find(s => s.id === ls.id);
+      return orig && (orig.enabled !== ls.enabled || orig.release !== ls.release);
+    });
+  }, [localSessions, data]);
+
+  const changedLabs = useMemo(() => {
+    return localLabs.filter(ll => {
+      const orig = data.labs.find(l => l.id === ll.id);
+      return orig && orig.enabled !== ll.enabled;
+    });
+  }, [localLabs, data]);
+
+  const totalChanges = changedSessions.length + changedLabs.length;
+
+  const handleReset = () => {
+    setLocalSessions(data.sessions.map(s => ({ ...s })));
+    setLocalLabs(data.labs.map(l => ({ ...l })));
+    setStatus({ type: "info", text: "Changes reset to published state." });
+  };
+
+  const handleDownloadJson = () => {
+    const updated = {
+      ...data,
+      sessions: localSessions,
+      labs: localLabs
+    };
+    const blob = new Blob([JSON.stringify(updated, null, 2) + "\n"], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "sessions.json";
+    a.click();
+    URL.revokeObjectURL(url);
+    setStatus({ type: "success", text: "Downloaded sessions.json file." });
+  };
+
+  const handlePublish = async () => {
+    const pat = token.trim();
+    if (!pat) {
+      setShowTokenSettings(true);
+      setStatus({ type: "error", text: "Please enter your GitHub Personal Access Token to publish to main." });
+      return;
+    }
+
+    setIsPublishing(true);
+    setStatus({ type: "info", text: "Connecting to GitHub API to fetch latest commit..." });
+
+    try {
+      const getRes = await fetch("https://api.github.com/repos/PradhanArpan/hydrology/contents/sessions.json?ref=main", {
+        headers: {
+          Authorization: `Bearer ${pat}`,
+          Accept: "application/vnd.github.v3+json"
+        }
+      });
+
+      if (!getRes.ok) {
+        throw new Error(`Failed to access repository: ${getRes.status} ${getRes.statusText}. Please verify your GitHub token has repository write permission for PradhanArpan/hydrology.`);
+      }
+
+      const fileData = await getRes.json();
+      const currentSha = fileData.sha;
+
+      const updatedData = {
+        ...data,
+        sessions: localSessions,
+        labs: localLabs
+      };
+      const jsonText = JSON.stringify(updatedData, null, 2) + "\n";
+      const b64Content = toBase64Utf8(jsonText);
+
+      setStatus({ type: "info", text: "Committing changes to main branch..." });
+      const putRes = await fetch("https://api.github.com/repos/PradhanArpan/hydrology/contents/sessions.json", {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${pat}`,
+          Accept: "application/vnd.github.v3+json",
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          message: "Release: update session availability via portal admin switchboard",
+          content: b64Content,
+          sha: currentSha,
+          branch: "main"
+        })
+      });
+
+      if (!putRes.ok) {
+        const errJson = await putRes.json().catch(() => ({}));
+        throw new Error(errJson.message || `GitHub error ${putRes.status}`);
+      }
+
+      if (onDataUpdate) onDataUpdate(updatedData);
+      setStatus({
+        type: "success",
+        text: "Changes committed directly to main! GitHub Pages is redeploying and changes will be live for everyone in ~45–60 seconds."
+      });
+    } catch (err) {
+      setStatus({ type: "error", text: String(err.message || err) });
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
+  if (!open) return null;
+
+  let displayedSessions = localSessions;
+  let displayedLabs = localLabs;
+  if (activeTab.startsWith("u")) {
+    const uNum = parseInt(activeTab.slice(1), 10);
+    displayedSessions = localSessions.filter(s => s.unit === uNum);
+    displayedLabs = localLabs.filter(l => l.unit === uNum);
+  } else if (activeTab === "labs") {
+    displayedSessions = [];
+    displayedLabs = localLabs;
+  }
+
+  return (
+    <div className="admin-modal-backdrop" onClick={onClose}>
+      <div className="admin-modal" onClick={e => e.stopPropagation()}>
+        <div className="admin-header">
+          <div>
+            <h3><Icon as={SlidersHorizontal} size={20} /> Instructor Release Switchboard</h3>
+            <div className="admin-header-subtitle">
+              Enable and disable course units, sessions, and labs for students in real time.
+            </div>
+          </div>
+          <button className="search-close-btn" onClick={onClose} aria-label="Close admin panel">
+            <Icon as={X} size={22} />
+          </button>
+        </div>
+
+        <div className="admin-body">
+          <div className="admin-token-card">
+            <div className="admin-token-header">
+              <span>
+                <Icon as={Key} size={15} /> GitHub Publishing Access:{" "}
+                {userLogin ? <b style={{ color: "var(--green)" }}>Connected as @{userLogin}</b> : token ? <b>Token saved</b> : <span style={{ color: "var(--g600)" }}>Token not set</span>}
+              </span>
+              <button
+                className="admin-btn secondary"
+                style={{ padding: "3px 10px", fontSize: "12px" }}
+                onClick={() => setShowTokenSettings(!showTokenSettings)}
+              >
+                {showTokenSettings ? "Hide Token Settings" : "Configure Token"}
+              </button>
+            </div>
+            {showTokenSettings && (
+              <>
+                <p style={{ margin: "2px 0 6px", fontSize: "12px", color: "var(--g600)", lineHeight: 1.4 }}>
+                  To push releases directly to GitHub Pages, provide a GitHub Personal Access Token (PAT) with <code>repo</code> or <code>Contents: Read and write</code> scope for <code>PradhanArpan/hydrology</code>. The token is stored solely in your local browser storage.
+                </p>
+                <div className="admin-token-input-row">
+                  <input
+                    type="password"
+                    className="admin-token-input"
+                    placeholder="ghp_... or github_pat_..."
+                    value={inputToken}
+                    onChange={e => setInputToken(e.target.value)}
+                  />
+                  <button className="admin-btn primary" onClick={handleSaveToken}>Save</button>
+                  {token && <button className="admin-btn secondary" onClick={handleClearToken}>Clear</button>}
+                </div>
+                <div style={{ fontSize: "11.5px", color: "var(--g600)" }}>
+                  Need a token? <a href="https://github.com/settings/tokens/new?scopes=repo&description=CE633+Course+Portal+Admin" target="_blank" rel="noopener" style={{ color: "var(--accent)" }}>Generate a Classic PAT on GitHub ↗</a>
+                </div>
+              </>
+            )}
+          </div>
+
+          <div className="admin-tabs">
+            <button className={"admin-tab " + (activeTab === "all" ? "active" : "")} onClick={() => setActiveTab("all")}>All Content</button>
+            <button className={"admin-tab " + (activeTab === "u1" ? "active" : "")} onClick={() => setActiveTab("u1")}>Unit I (S01–S09)</button>
+            <button className={"admin-tab " + (activeTab === "u2" ? "active" : "")} onClick={() => setActiveTab("u2")}>Unit II (S10–S18)</button>
+            <button className={"admin-tab " + (activeTab === "u3" ? "active" : "")} onClick={() => setActiveTab("u3")}>Unit III (S19–S27)</button>
+            <button className={"admin-tab " + (activeTab === "u4" ? "active" : "")} onClick={() => setActiveTab("u4")}>Unit IV (S28–S36)</button>
+            <button className={"admin-tab " + (activeTab === "u5" ? "active" : "")} onClick={() => setActiveTab("u5")}>Unit V (S37–S45)</button>
+            <button className={"admin-tab " + (activeTab === "labs" ? "active" : "")} onClick={() => setActiveTab("labs")}>Labs (L01–L16)</button>
+          </div>
+
+          <div className="admin-batch-bar">
+            <span>
+              <b>Quick Actions:</b> Toggle entire units on or off with one click
+            </span>
+            <div className="admin-batch-buttons">
+              <button className="admin-btn secondary" style={{ fontSize: "12px", padding: "4px 10px" }} onClick={() => batchUnit(2, true)}>
+                ✓ Enable Unit 2
+              </button>
+              <button className="admin-btn secondary" style={{ fontSize: "12px", padding: "4px 10px" }} onClick={() => batchUnit(2, false)}>
+                🔒 Disable Unit 2
+              </button>
+              <button className="admin-btn secondary" style={{ fontSize: "12px", padding: "4px 10px" }} onClick={() => batchUnit(3, true)}>
+                ✓ Enable Unit 3
+              </button>
+              <button className="admin-btn secondary" style={{ fontSize: "12px", padding: "4px 10px" }} onClick={() => batchUnit(3, false)}>
+                🔒 Disable Unit 3
+              </button>
+            </div>
+          </div>
+
+          {status && (
+            <div className={"admin-status-msg " + status.type}>
+              {status.text}
+            </div>
+          )}
+
+          {displayedSessions.length > 0 && (
+            <div>
+              <h4 style={{ margin: "6px 0 10px", fontSize: "14px", color: "var(--g600)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                Theory Sessions ({displayedSessions.length})
+              </h4>
+              <div className="admin-list">
+                {displayedSessions.map(s => {
+                  const orig = data.sessions.find(x => x.id === s.id);
+                  const isModified = orig && orig.enabled !== s.enabled;
+                  return (
+                    <div key={s.id} className={"admin-row " + (isModified ? "modified" : "")}>
+                      <div className="admin-row-info">
+                        <span className="day-num" style={{ minWidth: "32px", textAlign: "center" }}>{s.id}</span>
+                        <div style={{ minWidth: 0 }}>
+                          <div className="admin-row-title">{s.title}</div>
+                          <div style={{ fontSize: "11.5px", color: "var(--g400)" }}>Day {s.day} · Unit {ROMAN[s.unit]}</div>
+                        </div>
+                      </div>
+                      <div className="admin-row-controls">
+                        <span className={"chip " + (s.enabled ? "soft-hms" : "other")} style={{ fontSize: "11px" }}>
+                          {s.enabled ? "Live for students" : "Locked"}
+                        </span>
+                        <label className="admin-toggle" title={s.enabled ? "Click to lock session" : "Click to enable session for students"}>
+                          <input
+                            type="checkbox"
+                            checked={s.enabled}
+                            onChange={() => toggleSession(s.id)}
+                          />
+                          <span className="admin-toggle-slider" />
+                        </label>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {displayedLabs.length > 0 && (
+            <div style={{ marginTop: "10px" }}>
+              <h4 style={{ margin: "6px 0 10px", fontSize: "14px", color: "var(--g600)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                Software Labs ({displayedLabs.length})
+              </h4>
+              <div className="admin-list">
+                {displayedLabs.map(l => {
+                  const orig = data.labs.find(x => x.id === l.id);
+                  const isModified = orig && orig.enabled !== l.enabled;
+                  return (
+                    <div key={l.id} className={"admin-row " + (isModified ? "modified" : "")}>
+                      <div className="admin-row-info">
+                        <span className="day-num" style={{ minWidth: "32px", textAlign: "center" }}>{l.id}</span>
+                        <div style={{ minWidth: 0 }}>
+                          <div className="admin-row-title">{l.title}</div>
+                          <div style={{ fontSize: "11.5px", color: "var(--g400)" }}>
+                            Unit {ROMAN[l.unit]} · {l.software.join(", ")}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="admin-row-controls">
+                        <span className={"chip " + (l.enabled ? "soft-hms" : "other")} style={{ fontSize: "11px" }}>
+                          {l.enabled ? "Live for students" : "Locked"}
+                        </span>
+                        <label className="admin-toggle" title={l.enabled ? "Click to lock lab" : "Click to enable lab for students"}>
+                          <input
+                            type="checkbox"
+                            checked={l.enabled}
+                            onChange={() => toggleLab(l.id)}
+                          />
+                          <span className="admin-toggle-slider" />
+                        </label>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="admin-footer">
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "13px" }}>
+            {totalChanges > 0 ? (
+              <span style={{ color: "#c8973a", fontWeight: "600" }}>
+                ★ {totalChanges} item(s) modified
+              </span>
+            ) : (
+              <span style={{ color: "var(--g400)" }}>No unsaved changes</span>
+            )}
+            {totalChanges > 0 && (
+              <button className="admin-btn secondary" style={{ padding: "4px 8px", fontSize: "11.5px" }} onClick={handleReset}>
+                Reset
+              </button>
+            )}
+          </div>
+          <div style={{ display: "flex", gap: "8px" }}>
+            <button className="admin-btn secondary" onClick={handleDownloadJson} title="Download sessions.json file for offline editing">
+              <Icon as={Download} size={15} /> Export JSON
+            </button>
+            <button
+              className="admin-btn primary"
+              disabled={isPublishing || totalChanges === 0}
+              onClick={handlePublish}
+            >
+              {isPublishing ? (
+                <>
+                  <Icon as={RefreshCw} size={15} /> Publishing to main…
+                </>
+              ) : (
+                <>
+                  <Icon as={UploadCloud} size={15} /> Publish to GitHub
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ---------- Shell: header, menu drawer, preview bar ---------- */
-function SiteHeader({ data, onMenu, onSearch, theme, toggleTheme }) {
+function SiteHeader({ data, onMenu, onSearch, onAdmin, theme, toggleTheme }) {
   const c = data.course;
   return (
     <header className="fb-header">
@@ -438,6 +846,9 @@ function SiteHeader({ data, onMenu, onSearch, theme, toggleTheme }) {
       <button className="fb-iconbtn fb-header__searchicon" onClick={onSearch} aria-label="Search the course">
         <Icon as={Search} size={20} />
       </button>
+      <button className="fb-iconbtn" onClick={onAdmin} title="Instructor Admin Panel (Release Sessions) — Ctrl+Shift+A" aria-label="Open Instructor Admin Panel">
+        <Icon as={SlidersHorizontal} size={20} />
+      </button>
       <button className="fb-iconbtn" onClick={toggleTheme} aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}>
         <Icon as={theme === "dark" ? Sun : Moon} size={20} />
       </button>
@@ -445,7 +856,7 @@ function SiteHeader({ data, onMenu, onSearch, theme, toggleTheme }) {
   );
 }
 
-function MenuDrawer({ data, route, open, close, preview, visited }) {
+function MenuDrawer({ data, route, open, close, onAdmin, preview, visited }) {
   const closeRef = useRef();
   useEffect(() => {
     if (!open) return;
@@ -506,6 +917,14 @@ function MenuDrawer({ data, route, open, close, preview, visited }) {
               <a key={p.id} className="fb-drawer__link" href={"#/page/" + p.id} {...cur(route[0] === "page" && route[1] === p.id)}>{p.title}</a>
             ))}
             <a className="fb-drawer__link" href="#/page/links" {...cur(route[0] === "page" && route[1] === "links")}>Data and software links</a>
+            <button
+              className="fb-drawer__link"
+              style={{ background: "none", border: "none", width: "100%", textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}
+              onClick={() => { close(); if (onAdmin) onAdmin(); }}
+            >
+              <Icon as={SlidersHorizontal} size={16} />
+              <span>Instructor Admin Panel</span>
+            </button>
           </div>
         </div>
         <div className="fb-drawer__foot">
@@ -517,11 +936,14 @@ function MenuDrawer({ data, route, open, close, preview, visited }) {
   );
 }
 
-function PreviewBar() {
+function PreviewBar({ onAdmin }) {
   return (
     <div className="fb-previewbar" role="status">
       <span><b>Preview mode.</b> You can see unreleased sessions and labs; students can't.</span>
-      <a href={REPO + "/edit/main/sessions.json"} target="_blank" rel="noopener">Release sessions in sessions.json</a>
+      <button className="admin-pill-btn" onClick={onAdmin}>
+        ⚡ Open Release Switchboard
+      </button>
+      <a href={REPO + "/edit/main/sessions.json"} target="_blank" rel="noopener">Edit directly on GitHub ↗</a>
     </div>
   );
 }
@@ -1289,6 +1711,7 @@ function App() {
   const [err, setErr] = useState(null);
   const [menu, setMenu] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(false);
   const [theme, toggleTheme] = useTheme();
   const { visited, markVisited, completedLabs, refreshLabs } = useProgress();
 
@@ -1307,12 +1730,16 @@ function App() {
     if (data) document.title = data.course.code + " " + data.course.title;
   }, [data]);
 
-  // Global keyboard shortcut for search ('/' or 'Ctrl+K' / 'Cmd+K')
+  // Global keyboard shortcut for search ('/' or 'Ctrl+K' / 'Cmd+K') and Admin ('Ctrl+Shift+A' / 'Cmd+Shift+A')
   useEffect(() => {
     const onKey = e => {
       if ((e.key === "/" && !["INPUT", "TEXTAREA"].includes(e.target.tagName)) || ((e.ctrlKey || e.metaKey) && e.key === "k")) {
         e.preventDefault();
         setSearchOpen(true);
+      }
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === "A" || e.key === "a")) {
+        e.preventDefault();
+        setAdminOpen(true);
       }
     };
     window.addEventListener("keydown", onKey);
@@ -1351,17 +1778,23 @@ function App() {
   return (
     <div className="fb-shell">
       <a className="fb-sr" href="#main-content" onClick={e => { e.preventDefault(); const m = document.getElementById("main-content"); if (m) m.focus(); }}>Skip to content</a>
-      <SiteHeader data={data} onMenu={() => setMenu(true)} onSearch={() => setSearchOpen(true)} theme={theme} toggleTheme={toggleTheme} />
-      {preview && <PreviewBar />}
+      <SiteHeader data={data} onMenu={() => setMenu(true)} onSearch={() => setSearchOpen(true)} onAdmin={() => setAdminOpen(true)} theme={theme} toggleTheme={toggleTheme} />
+      {preview && <PreviewBar onAdmin={() => setAdminOpen(true)} />}
       <main className="main" id="main-content" tabIndex={-1}>
         {view}
       </main>
-      <MenuDrawer data={data} route={route} open={menu} close={() => setMenu(false)} preview={preview} visited={visited} />
+      <MenuDrawer data={data} route={route} open={menu} close={() => setMenu(false)} onAdmin={() => setAdminOpen(true)} preview={preview} visited={visited} />
       <SearchModal
         data={data}
         open={searchOpen}
         onClose={() => setSearchOpen(false)}
         preview={preview}
+      />
+      <AdminModal
+        data={data}
+        open={adminOpen}
+        onClose={() => setAdminOpen(false)}
+        onDataUpdate={setData}
       />
     </div>
   );
