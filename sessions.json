@@ -880,7 +880,7 @@
       "lab": "Read and annotate an HMS outflow hydrograph",
       "keywords": "hydrograph limb crest recession",
       "file": "sessions/S19.md",
-      "enabled": false,
+      "enabled": true,
       "ready": true,
       "labs": [],
       "release": ""
@@ -899,7 +899,7 @@
       "lab": "Sensitivity runs in HMS: area, CN, lag, storm duration",
       "keywords": "hydrograph shape factors",
       "file": "sessions/S20.md",
-      "enabled": false,
+      "enabled": true,
       "ready": true,
       "labs": [],
       "release": ""
@@ -919,7 +919,7 @@
       "lab": "Recession baseflow method in HMS vs hand separation",
       "keywords": "base flow separation N",
       "file": "sessions/S21.md",
-      "enabled": false,
+      "enabled": true,
       "ready": true,
       "labs": [],
       "release": ""
@@ -939,7 +939,7 @@
       "lab": "Excess precipitation and direct runoff from HMS result tables",
       "keywords": "ERH DRH effective rainfall",
       "file": "sessions/S22.md",
-      "enabled": false,
+      "enabled": true,
       "ready": true,
       "labs": [],
       "release": ""
@@ -958,7 +958,7 @@
       "lab": "User-Specified Unit Hydrograph transform in HMS",
       "keywords": "unit hydrograph linearity",
       "file": "sessions/S23.md",
-      "enabled": false,
+      "enabled": true,
       "ready": true,
       "labs": [],
       "release": ""
@@ -978,7 +978,7 @@
       "lab": "Derive a UH in a spreadsheet; enter it in HMS and check the volume",
       "keywords": "derivation unit hydrograph",
       "file": "sessions/S24.md",
-      "enabled": false,
+      "enabled": true,
       "ready": true,
       "labs": [],
       "release": ""
@@ -998,7 +998,7 @@
       "lab": "Convolution in a spreadsheet vs HMS for the same storm",
       "keywords": "convolution superposition",
       "file": "sessions/S25.md",
-      "enabled": false,
+      "enabled": true,
       "ready": true,
       "labs": [],
       "release": ""
@@ -1017,7 +1017,7 @@
       "lab": "Build an S-curve in a spreadsheet; check equilibrium discharge 2.778 A/D",
       "keywords": "s-curve summation",
       "file": "sessions/S26.md",
-      "enabled": false,
+      "enabled": true,
       "ready": true,
       "labs": [],
       "release": ""
@@ -1037,7 +1037,7 @@
       "lab": "S-curve conversion; Snyder and SCS UH transforms in HMS",
       "keywords": "snyder SCS synthetic",
       "file": "sessions/S27.md",
-      "enabled": false,
+      "enabled": true,
       "ready": true,
       "labs": [],
       "release": ""
