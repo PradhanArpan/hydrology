@@ -2707,7 +2707,7 @@ function ScurveTool() {
             <Kpi v={targetD < baseD ? "Sharper & Higher" : "Flatter & Lower"} l="Duration Effect" />
           </div>
           <p className="note" style={{ marginTop: 6, fontSize: 11 }}>
-            <b>Duration Principle:</b> Converting a $4	ext{ h}$ UH to a shorter $2	ext{ h}$ storm increases peak discharge by concentrating rainfall into a tighter window, whereas expanding to $6	ext{ h}$ or $8	ext{ h}$ attenuates the peak.
+            <b>Duration Principle:</b> Converting a 4-h UH to a shorter 2-h storm increases peak discharge by concentrating rainfall into a tighter window, whereas expanding to 6-h or 8-h attenuates the peak.
           </p>
         </div>
       </div>
@@ -3389,7 +3389,7 @@ function ProbDistLab() {
             <Kpi v={big(sigma) + " m³/s"} l="Std Deviation (σ = Cv × μ)" />
           </div>
           <p className="note" style={{ marginTop: 6, fontSize: 11 }}>
-            <b>Frequency Factor:</b> Chow formulated general flood frequency as $Q_T = ar{Q} + K_T cdot sigma$. For heavy-tailed hydrological extremes in India, Gumbel and Log-Pearson distributions prevent underestimating flood risk.
+            <b>Frequency Factor:</b> Chow formulated general flood frequency as $Q_T = Q_mean + K_T cdot sigma$. For heavy-tailed hydrological extremes in India, Gumbel and Log-Pearson distributions prevent underestimating flood risk.
           </p>
         </div>
       </div>
@@ -3477,7 +3477,7 @@ function RegionalFloodBench() {
             <Kpi v={f2(growthRatio)} l="Regional Growth Factor (QT / Q̄)" />
           </div>
           <p className="note" style={{ marginTop: 6, fontSize: 11 }}>
-            <b>Index Flood Method:</b> Used by CWC for ungauged Indian catchments. The mean annual flood $ar{Q}$ is scaled by a non-dimensional regional growth curve calibrated across similar hydrologic sub-zones.
+            <b>Index Flood Method:</b> Used by CWC for ungauged Indian catchments. The mean annual flood $Q_mean$ is scaled by a non-dimensional regional growth curve calibrated across similar hydrologic sub-zones.
           </p>
         </div>
       </div>
@@ -4559,7 +4559,7 @@ function HydroGenesis() {
             {/* Axes Labels */}
             <text x="15" y="25" fontSize="8" fill="#64748b">m³/s</text>
             <text x="235" y="174" fontSize="8" fill="#64748b">Hours</text>
-            <text x="35 + (tp/24)*220" y="32" fontSize="8" fill="#dc2626" fontWeight="bold">Peak Qp ({Math.round(qp)} m³/s)</text>
+            <text x={35 + (tp / 24) * 220} y="32" fontSize="8" fill="#dc2626" fontWeight="bold">Peak Qp ({Math.round(qp)} m³/s)</text>
           </svg>
         </div>
       </div>
@@ -4723,7 +4723,7 @@ function CatchmentShapeEffect() {
       <div style={{ marginTop: 8, padding: "8px 12px", borderRadius: 5, background: "#f0fdf4", border: "1px solid #bbf7d0", fontSize: 11, color: "#166534" }}>
         <b>{curr.name}:</b> {curr.desc}
         <br />
-        <b>Sherman's Principle:</b> Notice that changing rainfall from 0.5 cm to 3.5 cm <i>scales every ordinate up or down</i> without shifting the time to peak ($t_p = {curr.tp}	ext{ h}$) or time base ($t_b = {curr.tb}	ext{ h}$).
+        <b>Sherman&#39;s Principle:</b> Notice that changing rainfall from 0.5 cm to 3.5 cm <i>scales every ordinate up or down</i> without shifting the time to peak (tp = {curr.tp} h) or time base (tb = {curr.tb} h).
       </div>
     </Box>
   );
