@@ -183,6 +183,30 @@ function useProgress() {
   return { visited, markVisited, completedLabs, refreshLabs };
 }
 
+/* ---------- Resilient Widget Error Boundary ---------- */
+class WidgetBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error, errorInfo) {
+    console.error("Widget render error:", this.props.name, error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="callout warn" style={{ padding: "12px 16px", borderRadius: 6, margin: "12px 0" }}>
+          <b>Interactive Widget:</b> <code>{this.props.name}</code> encountered an issue ({this.state.error?.message || "Render error"}).
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 /* ---------- Markdown block with live React widgets ---------- */
 // dock: { store: HTMLElement, tab: number, open: (slot) => void } — when given, interactive tools render
 // into a hidden store (one slot per tool, tagged with its section) and leave a card inline whose
@@ -231,7 +255,13 @@ function Content({ md, onHeads, dock, idPrefix = "" }) {
       {mounts.map((m, i) => {
         if (m.card) return createPortal(<ToolCard name={m.name} onOpen={() => dock.open(m.card)} />, m.el, i);
         const W = ALL_COMPONENTS[m.name];
-        return createPortal(W ? <W /> : <div className="callout warn">Unknown widget: {m.name}</div>, m.el, i);
+        return createPortal(
+          <WidgetBoundary name={m.name} key={m.name + "-" + i}>
+            {W ? <W /> : <div className="callout warn">Unknown widget: {m.name}</div>}
+          </WidgetBoundary>,
+          m.el,
+          i
+        );
       })}
     </>
   );
