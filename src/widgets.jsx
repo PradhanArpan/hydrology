@@ -1533,7 +1533,620 @@ function WaterAtlas() {
   );
 }
 
+/* ============ NEW WIDGETS S14 to S45 ============ */
+
+/* S14: Crop ET & Irrigation Calculator */
+export function CropEtCalc() {
+  const [crop, setCrop] = useState("rice");
+  const [et0, setEt0] = useState(5.0);
+  const [pe, setPe] = useState(25.0);
+  const crops = {
+    rice: { name: "Paddy Rice", kc: [1.10, 1.15, 1.25, 0.95], days: [20, 30, 60, 30], amc: "Submerged" },
+    wheat: { name: "Wheat", kc: [0.40, 0.75, 1.15, 0.45], days: [15, 25, 50, 30], amc: "Aerated" },
+    cotton: { name: "Cotton", kc: [0.45, 0.75, 1.20, 0.70], days: [30, 50, 60, 40], amc: "Medium" },
+    sugarcane: { name: "Sugarcane", kc: [0.50, 0.85, 1.25, 0.80], days: [35, 60, 180, 90], amc: "High" }
+  };
+  const c = crops[crop];
+  const avgKc = mean(c.kc);
+  const etcDaily = avgKc * et0;
+  const monthEtc = etcDaily * 30;
+  const nirMonth = Math.max(0, monthEtc - pe);
+  const volPerHa = nirMonth * 10; // m3/ha
+
+  return (
+    <Box title="Crop ET & Irrigation Demand (FAO-56)" kind="Interactive calculator">
+      <div className="wg-row">
+        <div className="wg-col">
+          <label className="f">Crop:
+            <select value={crop} onChange={e => setCrop(e.target.value)} style={{ padding: "4px 8px", borderRadius: 4 }}>
+              {Object.entries(crops).map(([k, v]) => <option key={k} value={k}>{v.name}</option>)}
+            </select>
+          </label>
+          <label className="f">Reference ET0: <b>{f1(et0)} mm/day</b>
+            <input type="range" min="2" max="9" step="0.1" value={et0} onChange={e => setEt0(+e.target.value)} />
+          </label>
+          <label className="f">Monthly Effective Rainfall (Pe): <b>{pe} mm</b>
+            <input type="range" min="0" max="150" step="5" value={pe} onChange={e => setPe(+e.target.value)} />
+          </label>
+          <div className="kpi-grid" style={{ marginTop: 12 }}>
+            <Kpi v={f2(avgKc)} l="Mean Kc" />
+            <Kpi v={f1(etcDaily) + " mm"} l="Daily ETc" />
+            <Kpi v={f1(nirMonth) + " mm"} l="Net Irrigation Req" tone="g" />
+            <Kpi v={big(volPerHa) + " m³"} l="Water / ha / mo" tone="w" />
+          </div>
+        </div>
+        <div className="wg-col">
+          <svg viewBox="0 0 320 180" style={{ width: "100%", background: "#f8fafc", borderRadius: 6, border: "1px solid #e2e8f0" }}>
+            <text x="10" y="20" fontSize="11" fill="#475569" fontWeight="bold">FAO-56 Stage Kc Curve ({c.name})</text>
+            <path d="M 30 140 L 70 140 L 140 50 L 230 50 L 290 120" fill="none" stroke="#2563eb" strokeWidth="3" />
+            <line x1="30" y1="150" x2="290" y2="150" stroke="#94a3b8" strokeWidth="1" />
+            <text x="40" y="165" fontSize="9" fill="#64748b">Initial</text>
+            <text x="90" y="165" fontSize="9" fill="#64748b">Dev</text>
+            <text x="175" y="165" fontSize="9" fill="#64748b">Mid-Season</text>
+            <text x="255" y="165" fontSize="9" fill="#64748b">Late</text>
+            <circle cx="70" cy="140" r="4" fill="#2563eb" />
+            <circle cx="140" cy="50" r="4" fill="#2563eb" />
+            <circle cx="230" cy="50" r="4" fill="#2563eb" />
+            <circle cx="290" cy="120" r="4" fill="#2563eb" />
+            <text x="150" y="42" fontSize="10" fill="#1e40af" fontWeight="bold">Kc,max={c.kc[2]}</text>
+            <text x="35" y="132" fontSize="9" fill="#64748b">Kc,ini={c.kc[0]}</text>
+          </svg>
+        </div>
+      </div>
+    </Box>
+  );
+}
+
+/* S16: Flow Duration Curve Explorer */
+export function FdcExplorer() {
+  const [type, setType] = useState("perennial");
+  const [p, setP] = useState(75);
+  // Analytical FDC functions
+  const getQ = (pct, t) => {
+    if (t === "perennial") {
+      return 120 * Math.exp(-0.028 * pct) + 5; // m3/s
+    } else {
+      return Math.max(0, 240 * Math.exp(-0.065 * pct) - 2);
+    }
+  };
+  const qAtP = getQ(p, type);
+  const q10 = getQ(10, type), q50 = getQ(50, type), q75 = getQ(75, type), q90 = getQ(90, type);
+
+  // Generate curve points
+  const pts = [];
+  for (let x = 0; x <= 100; x += 2) {
+    const qval = getQ(x, type);
+    const px = 40 + (x / 100) * 260;
+    const py = 150 - (qval / 130) * 120;
+    pts.push(`${px},${Math.max(25, py)}`);
+  }
+
+  return (
+    <Box title="Flow Duration Curve (FDC) Analyzer" kind="Interactive hydrology">
+      <div className="wg-row">
+        <div className="wg-col">
+          <div style={{ marginBottom: 10 }}>
+            <Seg value={type} onChange={setType} options={[["perennial", "Perennial (e.g. Cauvery)"], ["ephemeral", "Seasonal / Ephemeral"]]} />
+          </div>
+          <label className="f">Exceedance Probability (p): <b>{p}%</b>
+            <input type="range" min="1" max="99" value={p} onChange={e => setP(+e.target.value)} />
+          </label>
+          <div className="kpi-grid" style={{ marginTop: 12 }}>
+            <Kpi v={f1(qAtP) + " m³/s"} l={`Discharge at Q${p}`} tone="w" />
+            <Kpi v={f1(q50) + " m³/s"} l="Q50 (Median Flow)" />
+            <Kpi v={f1(q75) + " m³/s"} l="Q75 (Irrigation Dependable)" tone="g" />
+            <Kpi v={f1(q90) + " m³/s"} l="Q90 (Environmental Baseflow)" tone={q90 < 1 ? "b" : ""} />
+          </div>
+        </div>
+        <div className="wg-col">
+          <svg viewBox="0 0 320 180" style={{ width: "100%", background: "#f8fafc", borderRadius: 6, border: "1px solid #e2e8f0" }}>
+            <text x="10" y="18" fontSize="10" fill="#475569" fontWeight="bold">Flow Duration Curve (Discharge vs % Time Exceeded)</text>
+            <line x1="40" y1="150" x2="300" y2="150" stroke="#64748b" strokeWidth="1" />
+            <line x1="40" y1="25" x2="40" y2="150" stroke="#64748b" strokeWidth="1" />
+            <text x="35" y="165" fontSize="8" fill="#64748b">0%</text>
+            <text x="160" y="165" fontSize="8" fill="#64748b">50%</text>
+            <text x="290" y="165" fontSize="8" fill="#64748b">100%</text>
+            <text x="8" y="35" fontSize="8" fill="#64748b">Q (m³/s)</text>
+            <polyline fill="none" stroke="#0284c7" strokeWidth="2.5" points={pts.join(" ")} />
+            {/* Marker */}
+            <circle cx={40 + (p / 100) * 260} cy={Math.max(25, 150 - (qAtP / 130) * 120)} r="5" fill="#ef4444" />
+            <line x1={40 + (p / 100) * 260} y1="150" x2={40 + (p / 100) * 260} y2={Math.max(25, 150 - (qAtP / 130) * 120)} stroke="#ef4444" strokeDasharray="2,2" />
+          </svg>
+        </div>
+      </div>
+    </Box>
+  );
+}
+
+/* S20: Interactive Baseflow Separator */
+export function BaseflowTool() {
+  const [method, setMethod] = useState("n");
+  const [area, setArea] = useState(450); // km2
+  const N = +(0.83 * Math.pow(area, 0.2)).toFixed(2); // days
+  const nHours = +(N * 24).toFixed(0);
+
+  // Storm flood hydrograph coordinates
+  const totalOrds = [15, 22, 60, 145, 220, 180, 120, 75, 45, 28, 20, 16];
+  const tVals = [0, 6, 12, 18, 24, 30, 36, 42, 48, 54, 60, 66]; // hours
+  const peakIdx = 4; // 24h
+  const baseOrds = totalOrds.map((q, idx) => {
+    if (method === "straight") {
+      return 15;
+    } else if (method === "n") {
+      if (idx <= peakIdx) return 15 + (idx / peakIdx) * 5;
+      const endIdx = Math.min(totalOrds.length - 1, peakIdx + Math.round(nHours / 6));
+      if (idx <= endIdx) {
+        return 20 + ((idx - peakIdx) / (endIdx - peakIdx)) * 5;
+      }
+      return 15;
+    } else {
+      // Variable slope
+      if (idx <= peakIdx) return 15 + (idx / peakIdx) * 12;
+      return Math.max(15, 27 - (idx - peakIdx) * 2.5);
+    }
+  });
+
+  const drhOrds = totalOrds.map((q, i) => Math.max(0, q - baseOrds[i]));
+  const sumDrh = sum(drhOrds);
+  const drhVolMcm = +((sumDrh * 6 * 3600) / 1e6).toFixed(3);
+  const reCm = +((drhVolMcm * 1e6) / (area * 1e6) * 100).toFixed(2);
+
+  return (
+    <Box title="Hydrograph Baseflow Separation Tool" kind="Interactive analysis">
+      <div className="wg-row">
+        <div className="wg-col">
+          <div style={{ marginBottom: 10 }}>
+            <Seg value={method} onChange={setMethod} options={[["straight", "Straight line"], ["n", "Fixed base (N = 0.83 A^0.2)"], ["variable", "Variable slope"]]} />
+          </div>
+          <label className="f">Catchment Area: <b>{area} km²</b>
+            <input type="range" min="50" max="1000" step="25" value={area} onChange={e => setArea(+e.target.value)} />
+          </label>
+          <div className="kpi-grid" style={{ marginTop: 12 }}>
+            <Kpi v={N + " days"} l={`Linsley Base N (${nHours}h)`} />
+            <Kpi v={drhVolMcm + " MCM"} l="Direct Runoff Vol (Vd)" tone="g" />
+            <Kpi v={reCm + " cm"} l="Excess Rain Depth (R)" tone="w" />
+            <Kpi v={totalOrds[peakIdx] + " m³/s"} l="Peak Flood Flow (Qp)" />
+          </div>
+        </div>
+        <div className="wg-col">
+          <svg viewBox="0 0 320 180" style={{ width: "100%", background: "#f8fafc", borderRadius: 6, border: "1px solid #e2e8f0" }}>
+            <text x="10" y="16" fontSize="10" fill="#475569" fontWeight="bold">Flood Hydrograph & Separated Baseflow</text>
+            <path d={`M 30 150 ` + totalOrds.map((q, i) => `L ${30 + i * 23} ${150 - (q / 230) * 125}`).join(" ") + ` L 283 150 Z`} fill="#bfdbfe" opacity="0.6" />
+            <path d={`M 30 150 ` + baseOrds.map((b, i) => `L ${30 + i * 23} ${150 - (b / 230) * 125}`).join(" ") + ` L 283 150 Z`} fill="#d97706" opacity="0.5" />
+            <polyline fill="none" stroke="#2563eb" strokeWidth="2.5" points={totalOrds.map((q, i) => `${30 + i * 23},${150 - (q / 230) * 125}`).join(" ")} />
+            <polyline fill="none" stroke="#b45309" strokeWidth="2" strokeDasharray="3,3" points={baseOrds.map((b, i) => `${30 + i * 23},${150 - (b / 230) * 125}`).join(" ")} />
+            <line x1="30" y1="150" x2="290" y2="150" stroke="#64748b" strokeWidth="1" />
+            <text x="120" y="70" fontSize="11" fill="#1d4ed8" fontWeight="bold">Direct Runoff (DRH)</text>
+            <text x="120" y="140" fontSize="10" fill="#92400e" fontWeight="bold">Baseflow</text>
+          </svg>
+        </div>
+      </div>
+    </Box>
+  );
+}
+
+/* S22: Discrete Convolution Matrix Machine */
+export function ConvolutionMatrix() {
+  const [p1, setP1] = useState(2.0); // cm
+  const [p2, setP2] = useState(3.5);
+  const [p3, setP3] = useState(1.5);
+
+  const uh = [0, 12, 35, 25, 12, 5, 0]; // 1-cm UH ordinates
+  const m = uh.length;
+  // Compute convolution
+  const qComposite = new Array(m + 2).fill(0);
+  for (let i = 0; i < m; i++) {
+    qComposite[i] += p1 * uh[i];
+    qComposite[i + 1] += p2 * uh[i];
+    qComposite[i + 2] += p3 * uh[i];
+  }
+  const peakFlow = Math.max(...qComposite);
+
+  return (
+    <Box title="Discrete Hydrograph Convolution Machine" kind="Interactive matrix">
+      <div className="wg-row">
+        <div className="wg-col">
+          <label className="f">Period 1 Rain Excess (P1): <b>{f1(p1)} cm</b>
+            <input type="range" min="0" max="6" step="0.5" value={p1} onChange={e => setP1(+e.target.value)} />
+          </label>
+          <label className="f">Period 2 Rain Excess (P2): <b>{f1(p2)} cm</b>
+            <input type="range" min="0" max="6" step="0.5" value={p2} onChange={e => setP2(+e.target.value)} />
+          </label>
+          <label className="f">Period 3 Rain Excess (P3): <b>{f1(p3)} cm</b>
+            <input type="range" min="0" max="6" step="0.5" value={p3} onChange={e => setP3(+e.target.value)} />
+          </label>
+          <div className="kpi-grid" style={{ marginTop: 12 }}>
+            <Kpi v={f1(p1 + p2 + p3) + " cm"} l="Total Rainfall Excess" />
+            <Kpi v={f1(peakFlow) + " m³/s"} l="Composite Peak Discharge" tone="w" />
+          </div>
+        </div>
+        <div className="wg-col">
+          <svg viewBox="0 0 320 180" style={{ width: "100%", background: "#f8fafc", borderRadius: 6, border: "1px solid #e2e8f0" }}>
+            <text x="10" y="16" fontSize="10" fill="#475569" fontWeight="bold">Lagged Components & Combined DRH</text>
+            {/* Component 1 */}
+            <polyline fill="none" stroke="#93c5fd" strokeWidth="1.5" strokeDasharray="3,3" points={uh.map((u, i) => `${30 + i * 28},${150 - (u * p1 / 200) * 125}`).join(" ")} />
+            {/* Component 2 */}
+            <polyline fill="none" stroke="#86efac" strokeWidth="1.5" strokeDasharray="3,3" points={uh.map((u, i) => `${30 + (i + 1) * 28},${150 - (u * p2 / 200) * 125}`).join(" ")} />
+            {/* Component 3 */}
+            <polyline fill="none" stroke="#fca5a5" strokeWidth="1.5" strokeDasharray="3,3" points={uh.map((u, i) => `${30 + (i + 2) * 28},${150 - (u * p3 / 200) * 125}`).join(" ")} />
+            {/* Combined */}
+            <polyline fill="none" stroke="#1e3a8a" strokeWidth="3" points={qComposite.map((q, i) => `${30 + i * 28},${150 - (q / 200) * 125}`).join(" ")} />
+            <line x1="30" y1="150" x2="290" y2="150" stroke="#64748b" strokeWidth="1" />
+            <text x="150" y="35" fontSize="11" fill="#1e3a8a" fontWeight="bold">Composite Flood DRH</text>
+          </svg>
+        </div>
+      </div>
+    </Box>
+  );
+}
+
+/* S24: Snyder's Synthetic Unit Hydrograph Generator */
+export function SnyderSynth() {
+  const [L, setL] = useState(35); // km
+  const [Lca, setLca] = useState(18); // km
+  const [area, setArea] = useState(520); // km2
+  const [Ct, setCt] = useState(1.5);
+  const [Cp, setCp] = useState(0.65);
+
+  const tp = +(Ct * Math.pow(L * Lca, 0.3)).toFixed(2); // hours
+  const tr = +(tp / 5.5).toFixed(2);
+  const qp = +((2.78 * Cp * area) / tp).toFixed(1);
+  const tb = +(3 + 3 * (tp / 24) * 24).toFixed(1);
+  const w50 = +(5.87 / Math.pow(qp / area, 1.08)).toFixed(1);
+  const w75 = +(w50 / 1.75).toFixed(1);
+
+  return (
+    <Box title="Snyder's Synthetic Unit Hydrograph" kind="Interactive design">
+      <div className="wg-row">
+        <div className="wg-col">
+          <label className="f">Stream Length (L): <b>{L} km</b>
+            <input type="range" min="10" max="80" value={L} onChange={e => setL(+e.target.value)} />
+          </label>
+          <label className="f">Centroid Distance (Lca): <b>{Lca} km</b>
+            <input type="range" min="5" max={Math.min(50, L)} value={Lca} onChange={e => setLca(+e.target.value)} />
+          </label>
+          <label className="f">Catchment Area: <b>{area} km²</b>
+            <input type="range" min="100" max="1000" step="20" value={area} onChange={e => setArea(+e.target.value)} />
+          </label>
+          <div className="kpi-grid" style={{ marginTop: 12 }}>
+            <Kpi v={tp + " h"} l="Basin Lag (tp)" />
+            <Kpi v={tr + " h"} l="Std Duration (tr)" />
+            <Kpi v={qp + " m³/s"} l="Peak Discharge (Qp)" tone="w" />
+            <Kpi v={w50 + " h"} l="W50 Width" tone="g" />
+          </div>
+        </div>
+        <div className="wg-col">
+          <svg viewBox="0 0 320 180" style={{ width: "100%", background: "#f8fafc", borderRadius: 6, border: "1px solid #e2e8f0" }}>
+            <text x="10" y="18" fontSize="10" fill="#475569" fontWeight="bold">Synthetic UH with W50 and W75 Widths</text>
+            <path d={`M 30 150 Q ${30 + tp * 6} 30, ${Math.min(290, 30 + tp * 14)} 150 Z`} fill="#dbeafe" stroke="#2563eb" strokeWidth="2.5" />
+            {/* W50 Line */}
+            <line x1={30 + tp * 6 - w50 * 2.5} y1="90" x2={30 + tp * 6 + w50 * 2.5} y2="90" stroke="#dc2626" strokeWidth="2" strokeDasharray="2,2" />
+            <text x={30 + tp * 6 + 10} y="85" fontSize="9" fill="#dc2626">W50 = {w50}h</text>
+            {/* W75 Line */}
+            <line x1={30 + tp * 6 - w75 * 2} y1="60" x2={30 + tp * 6 + w75 * 2} y2="60" stroke="#7c3aed" strokeWidth="2" strokeDasharray="2,2" />
+            <text x={30 + tp * 6 + 10} y="55" fontSize="9" fill="#7c3aed">W75 = {w75}h</text>
+            <line x1="30" y1="150" x2="290" y2="150" stroke="#64748b" strokeWidth="1" />
+          </svg>
+        </div>
+      </div>
+    </Box>
+  );
+}
+
+/* S31: Stage-Discharge Rating Curve Fitter */
+export function RatingCurveLab() {
+  const [a, setA] = useState(1.20); // stage of zero flow (true is 1.20)
+  // True equation: Q = 18.5 * (G - 1.20)^1.75
+  const obs = [
+    { G: 1.80, Q: 8.5 },
+    { G: 2.50, Q: 29.8 },
+    { G: 3.20, Q: 64.2 },
+    { G: 4.00, Q: 118.5 },
+    { G: 4.80, Q: 188.0 },
+    { G: 5.50, Q: 260.4 }
+  ];
+
+  // Fit linear regression on ln(Q) vs ln(G - a)
+  let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+  const n = obs.length;
+  const valid = obs.every(o => o.G > a);
+  let slope = 0, intercept = 0, r2 = 0;
+
+  if (valid) {
+    const pts = obs.map(o => ({ x: Math.log(o.G - a), y: Math.log(o.Q) }));
+    pts.forEach(p => {
+      sumX += p.x; sumY += p.y; sumXY += p.x * p.y; sumX2 += p.x * p.x;
+    });
+    slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+    intercept = (sumY - slope * sumX) / n;
+    r2 = +(Math.abs(n * sumXY - sumX * sumY) / Math.sqrt((n * sumX2 - sumX * sumX) * 1.5)).toFixed(3);
+  }
+
+  const Cr = valid ? Math.exp(intercept).toFixed(2) : "–";
+  const bExp = valid ? slope.toFixed(2) : "–";
+  const shape = a < 1.15 ? "Concave Downward (a too low)" : a > 1.25 ? "Concave Upward (a too high)" : "Optimal Straight Line (a = 1.20m)";
+  const tone = a >= 1.15 && a <= 1.25 ? "g" : "w";
+
+  return (
+    <Box title="Rating Curve Stage-of-Zero-Flow (SZF) Finder" kind="Log-log calibration">
+      <div className="wg-row">
+        <div className="wg-col">
+          <label className="f">Assumed Zero-Flow Stage (a): <b>{f2(a)} m</b>
+            <input type="range" min="0.5" max="1.6" step="0.05" value={a} onChange={e => setA(+e.target.value)} />
+          </label>
+          <div style={{ margin: "8px 0", fontSize: 13, fontWeight: "bold", color: a >= 1.15 && a <= 1.25 ? "#16a34a" : "#d97706" }}>
+            Log-Log Shape: {shape}
+          </div>
+          <div className="kpi-grid" style={{ marginTop: 12 }}>
+            <Kpi v={Cr} l="Rating Coeff (Cr)" />
+            <Kpi v={bExp} l="Exponent (b)" />
+            <Kpi v={`Q = ${Cr}(G - ${f2(a)})^${bExp}`} l="Calibrated Formula" tone={tone} />
+          </div>
+        </div>
+        <div className="wg-col">
+          <svg viewBox="0 0 320 180" style={{ width: "100%", background: "#f8fafc", borderRadius: 6, border: "1px solid #e2e8f0" }}>
+            <text x="10" y="18" fontSize="10" fill="#475569" fontWeight="bold">Log-Log Plot: ln(Q) vs ln(G - a)</text>
+            <line x1="40" y1="150" x2="300" y2="150" stroke="#64748b" strokeWidth="1" />
+            <line x1="40" y1="25" x2="40" y2="150" stroke="#64748b" strokeWidth="1" />
+            <text x="250" y="165" fontSize="9" fill="#64748b">ln(G - a)</text>
+            <text x="8" y="35" fontSize="9" fill="#64748b">ln(Q)</text>
+            {valid && obs.map((o, idx) => {
+              const lx = Math.log(o.G - a);
+              const ly = Math.log(o.Q);
+              const px = 40 + ((lx + 1.5) / 3.0) * 250;
+              const py = 150 - ((ly - 1.5) / 4.5) * 120;
+              return <circle key={idx} cx={px} cy={py} r="4.5" fill="#2563eb" />;
+            })}
+          </svg>
+        </div>
+      </div>
+    </Box>
+  );
+}
+
+/* S32: Loop Rating Curve Hysteresis Animator */
+export function LoopRating() {
+  const [dhdt, setDhdt] = useState(0.15); // m/h
+  const [s0, setS0] = useState(0.001);
+  const [c, setC] = useState(2.0); // m/s
+  const qn = 220; // m3/s steady rating
+
+  const dhdtMs = dhdt / 3600;
+  const term = dhdtMs / (s0 * c);
+  const corrFactor = Math.sqrt(Math.max(0.01, 1 + term));
+  const qActual = +(qn * corrFactor).toFixed(1);
+  const diffPct = +(((qActual - qn) / qn) * 100).toFixed(2);
+
+  return (
+    <Box title="Jones Formula Loop Rating Curve (Hysteresis)" kind="Unsteady flow">
+      <div className="wg-row">
+        <div className="wg-col">
+          <label className="f">Rate of Stage Change (dh/dt): <b>{dhdt > 0 ? "+" : ""}{f2(dhdt)} m/h</b>
+            <input type="range" min="-0.30" max="0.30" step="0.02" value={dhdt} onChange={e => setDhdt(+e.target.value)} />
+          </label>
+          <label className="f">Longitudinal Bed Slope (S0): <b>{s0}</b>
+            <input type="range" min="0.0005" max="0.003" step="0.0005" value={s0} onChange={e => setS0(+e.target.value)} />
+          </label>
+          <div className="kpi-grid" style={{ marginTop: 12 }}>
+            <Kpi v={qn + " m³/s"} l="Steady Rating Flow (Qn)" />
+            <Kpi v={qActual + " m³/s"} l="Actual Unsteady Flow (Q)" tone="w" />
+            <Kpi v={(diffPct > 0 ? "+" : "") + diffPct + "%"} l="Hysteresis Shift" tone={diffPct > 0 ? "g" : "b"} />
+          </div>
+        </div>
+        <div className="wg-col">
+          <svg viewBox="0 0 320 180" style={{ width: "100%", background: "#f8fafc", borderRadius: 6, border: "1px solid #e2e8f0" }}>
+            <text x="10" y="18" fontSize="10" fill="#475569" fontWeight="bold">Stage vs Discharge Hysteresis Loop</text>
+            {/* Steady curve */}
+            <path d="M 40 145 C 100 120, 180 80, 280 30" fill="none" stroke="#64748b" strokeWidth="2" strokeDasharray="3,3" />
+            {/* Rising loop branch */}
+            <path d="M 40 145 C 115 110, 205 65, 280 30" fill="none" stroke="#2563eb" strokeWidth="2.5" />
+            {/* Falling loop branch */}
+            <path d="M 40 145 C 85 130, 155 95, 280 30" fill="none" stroke="#d97706" strokeWidth="2.5" />
+            <line x1="40" y1="150" x2="300" y2="150" stroke="#94a3b8" strokeWidth="1" />
+            <text x="180" y="55" fontSize="9" fill="#2563eb" fontWeight="bold">Rising Limb (dh/dt &gt; 0)</text>
+            <text x="110" y="125" fontSize="9" fill="#d97706" fontWeight="bold">Falling Limb (dh/dt &lt; 0)</text>
+            <circle cx={40 + (qActual / 260) * 240} cy="70" r="5" fill="#ef4444" />
+          </svg>
+        </div>
+      </div>
+    </Box>
+  );
+}
+
+/* S35: Gumbel Extreme Value Probability Workbench */
+export function GumbelBench() {
+  const [meanQ, setMeanQ] = useState(420);
+  const [sdQ, setSdQ] = useState(115);
+  const [T, setT] = useState(100);
+
+  const yn = 0.5362;
+  const sn = 1.1124;
+  const yT = -Math.log(-Math.log(1 - 1 / T));
+  const KT = (yT - yn) / sn;
+  const xT = +(meanQ + KT * sdQ).toFixed(1);
+  const se = (sn * sdQ / Math.sqrt(30));
+  const xUpper = +(xT + 1.96 * se).toFixed(1);
+  const xLower = +(xT - 1.96 * se).toFixed(1);
+
+  return (
+    <Box title="Gumbel Extreme Value (EV-I) Frequency Workbench" kind="Statistical hydrology">
+      <div className="wg-row">
+        <div className="wg-col">
+          <label className="f">Target Return Period (T): <b>{T} years</b>
+            <input type="range" min="5" max="200" step="5" value={T} onChange={e => setT(+e.target.value)} />
+          </label>
+          <label className="f">Mean Annual Flood (x̄): <b>{meanQ} m³/s</b>
+            <input type="range" min="100" max="1000" step="20" value={meanQ} onChange={e => setMeanQ(+e.target.value)} />
+          </label>
+          <label className="f">Standard Deviation (s): <b>{sdQ} m³/s</b>
+            <input type="range" min="20" max="300" step="10" value={sdQ} onChange={e => setSdQ(+e.target.value)} />
+          </label>
+          <div className="kpi-grid" style={{ marginTop: 12 }}>
+            <Kpi v={f2(KT)} l={`Freq Factor K${T}`} />
+            <Kpi v={xT + " m³/s"} l={`Design Flood (x${T})`} tone="w" />
+            <Kpi v={`${xLower} – ${xUpper}`} l="95% Confidence Interval" tone="g" />
+          </div>
+        </div>
+        <div className="wg-col">
+          <svg viewBox="0 0 320 180" style={{ width: "100%", background: "#f8fafc", borderRadius: 6, border: "1px solid #e2e8f0" }}>
+            <text x="10" y="18" fontSize="10" fill="#475569" fontWeight="bold">Gumbel Probability Paper (xT vs yT)</text>
+            <line x1="40" y1="150" x2="300" y2="150" stroke="#64748b" strokeWidth="1" />
+            <line x1="40" y1="25" x2="40" y2="150" stroke="#64748b" strokeWidth="1" />
+            <text x="250" y="165" fontSize="9" fill="#64748b">Reduced yT</text>
+            {/* Fitted Line */}
+            <line x1="50" y1="135" x2="290" y2="35" stroke="#2563eb" strokeWidth="2.5" />
+            {/* Confidence Bands */}
+            <line x1="50" y1="125" x2="290" y2="20" stroke="#93c5fd" strokeWidth="1.5" strokeDasharray="3,3" />
+            <line x1="50" y1="145" x2="290" y2="50" stroke="#93c5fd" strokeWidth="1.5" strokeDasharray="3,3" />
+            <circle cx={40 + (yT / 6.0) * 250} cy={Math.max(25, 150 - (xT / 1100) * 125)} r="5" fill="#ef4444" />
+            <text x="50" y="30" fontSize="9" fill="#2563eb" fontWeight="bold">xT = x̄ + KT * s</text>
+          </svg>
+        </div>
+      </div>
+    </Box>
+  );
+}
+
+/* S38: Virtual Darcy Permeameter & Seepage Velocity */
+export function DarcyTube() {
+  const [soil, setSoil] = useState("sand");
+  const [dh, setDh] = useState(40); // cm
+  const [L, setL] = useState(50); // cm
+
+  const soils = {
+    gravel: { name: "Coarse Gravel", K: 150, ne: 0.32 },
+    sand: { name: "Medium Sand", K: 25, ne: 0.25 },
+    silt: { name: "Silty Sand", K: 3.5, ne: 0.38 },
+    clay: { name: "Clayey Silt", K: 0.15, ne: 0.45 }
+  };
+  const s = soils[soil];
+  const i = +(dh / L).toFixed(3);
+  const vDarcian = +(s.K * i).toFixed(2); // m/day
+  const vSeepage = +(vDarcian / s.ne).toFixed(2); // m/day
+
+  return (
+    <Box title="Virtual Darcy Permeameter & Seepage Flow" kind="Experimental lab">
+      <div className="wg-row">
+        <div className="wg-col">
+          <label className="f">Porous Soil Media:
+            <select value={soil} onChange={e => setSoil(e.target.value)} style={{ padding: "4px 8px", borderRadius: 4 }}>
+              {Object.entries(soils).map(([k, v]) => <option key={k} value={k}>{v.name} (K={v.K} m/d)</option>)}
+            </select>
+          </label>
+          <label className="f">Head Difference (Δh): <b>{dh} cm</b>
+            <input type="range" min="5" max="80" value={dh} onChange={e => setDh(+e.target.value)} />
+          </label>
+          <label className="f">Column Length (L): <b>{L} cm</b>
+            <input type="range" min="20" max="100" value={L} onChange={e => setL(+e.target.value)} />
+          </label>
+          <div className="kpi-grid" style={{ marginTop: 12 }}>
+            <Kpi v={i} l="Hydraulic Gradient (i = Δh/L)" />
+            <Kpi v={vDarcian + " m/d"} l="Discharge Velocity (v)" />
+            <Kpi v={vSeepage + " m/d"} l="Actual Seepage Velocity (vs)" tone="w" />
+          </div>
+        </div>
+        <div className="wg-col">
+          <svg viewBox="0 0 320 180" style={{ width: "100%", background: "#f8fafc", borderRadius: 6, border: "1px solid #e2e8f0" }}>
+            <text x="10" y="18" fontSize="10" fill="#475569" fontWeight="bold">Soil Column Permeameter</text>
+            {/* Manometers */}
+            <rect x="50" y="40" width="10" height="90" fill="none" stroke="#475569" strokeWidth="1.5" />
+            <rect x="50" y={130 - (dh * 0.9)} width="10" height={dh * 0.9} fill="#93c5fd" />
+            <rect x="230" y="80" width="10" height="50" fill="none" stroke="#475569" strokeWidth="1.5" />
+            <rect x="230" y="100" width="10" height="30" fill="#93c5fd" />
+            {/* Soil Cylinder */}
+            <rect x="40" y="130" width="220" height="35" fill="#fde68a" stroke="#d97706" strokeWidth="2" />
+            <text x="110" y="152" fontSize="11" fill="#92400e" fontWeight="bold">{s.name}</text>
+            <text x="75" y="35" fontSize="9" fill="#0369a1">Δh = {dh} cm</text>
+            <line x1="60" y1="40" x2="230" y2="40" stroke="#0284c7" strokeDasharray="2,2" />
+          </svg>
+        </div>
+      </div>
+    </Box>
+  );
+}
+
+/* S45: Campus Rooftop RWH & Tank Sizing Workbench */
+export function RwhDesigner() {
+  const [area, setArea] = useState(450); // m2
+  const [coeff, setCoeff] = useState(0.85); // RCC
+  const [rain, setRain] = useState(920); // mm/year
+  const [storm, setStorm] = useState(40); // mm design storm
+
+  const dFlush = 1.5; // mm
+  const effStorm = Math.max(0, storm - dFlush);
+  const annualVolM3 = +((coeff * (rain / 1000) * area)).toFixed(1);
+  const tankVolM3 = +((coeff * (effStorm / 1000) * area)).toFixed(1);
+  const tankLiters = Math.round(tankVolM3 * 1000);
+  const trenchLenM = +((tankVolM3 / (1.0 * 1.5 * 0.40))).toFixed(1); // gravel porosity 40%
+
+  return (
+    <Box title="Campus Rooftop Rainwater Harvesting Workbench" kind="Urban sustainability">
+      <div className="wg-row">
+        <div className="wg-col">
+          <label className="f">Rooftop Catchment Area: <b>{area} m²</b>
+            <input type="range" min="100" max="1500" step="50" value={area} onChange={e => setArea(+e.target.value)} />
+          </label>
+          <label className="f">Runoff Coefficient (C): <b>{coeff}</b>
+            <select value={coeff} onChange={e => setCoeff(+e.target.value)} style={{ padding: "4px 8px", borderRadius: 4, marginLeft: 8 }}>
+              <option value="0.90">GI Metal Sheets (C = 0.90)</option>
+              <option value="0.85">RCC Flat Roof (C = 0.85)</option>
+              <option value="0.75">Clay Tiles (C = 0.75)</option>
+            </select>
+          </label>
+          <label className="f">Design Storm Depth: <b>{storm} mm</b>
+            <input type="range" min="20" max="80" step="5" value={storm} onChange={e => setStorm(+e.target.value)} />
+          </label>
+          <div className="kpi-grid" style={{ marginTop: 12 }}>
+            <Kpi v={annualVolM3 + " m³"} l="Annual Harvest Potential" tone="w" />
+            <Kpi v={big(tankLiters) + " L"} l="Design Sump Capacity" tone="g" />
+            <Kpi v={trenchLenM + " m"} l="CGWB Recharge Trench Length" />
+          </div>
+        </div>
+        <div className="wg-col">
+          <svg viewBox="0 0 320 180" style={{ width: "100%", background: "#f8fafc", borderRadius: 6, border: "1px solid #e2e8f0" }}>
+            <text x="10" y="18" fontSize="10" fill="#475569" fontWeight="bold">RWH System Schematic</text>
+            {/* Building Roof */}
+            <polygon points="30,80 140,50 140,90 30,120" fill="#cbd5e1" stroke="#475569" strokeWidth="1.5" />
+            <text x="50" y="90" fontSize="9" fill="#1e293b" fontWeight="bold">Roof ({area}m²)</text>
+            {/* First Flush */}
+            <rect x="160" y="95" width="15" height="40" fill="#fed7aa" stroke="#ea580c" />
+            <text x="145" y="150" fontSize="8" fill="#ea580c">First Flush</text>
+            {/* Storage Sump */}
+            <rect x="200" y="100" width="55" height="45" rx="3" fill="#bfdbfe" stroke="#2563eb" strokeWidth="2" />
+            <text x="206" y="125" fontSize="9" fill="#1e40af" fontWeight="bold">{big(tankLiters)}L</text>
+            <text x="210" y="160" fontSize="8" fill="#2563eb">Storage Sump</text>
+            {/* Recharge Trench */}
+            <rect x="270" y="115" width="40" height="30" fill="#fef08a" stroke="#ca8a04" strokeDasharray="2,2" />
+            <text x="272" y="160" fontSize="8" fill="#a16207">Recharge</text>
+          </svg>
+        </div>
+      </div>
+    </Box>
+  );
+}
+
 export const WIDGETS = {
+  cropetcalc: CropEtCalc,
+  "cropet-calc": CropEtCalc,
+  fdcexplorer: FdcExplorer,
+  "fdc-explorer": FdcExplorer,
+  baseflowtool: BaseflowTool,
+  "baseflow-tool": BaseflowTool,
+  convolutionmatrix: ConvolutionMatrix,
+  "convolution-matrix": ConvolutionMatrix,
+  snydersynth: SnyderSynth,
+  "snyder-synth": SnyderSynth,
+  ratingcurvelab: RatingCurveLab,
+  "rating-curve-lab": RatingCurveLab,
+  looprating: LoopRating,
+  "loop-rating": LoopRating,
+  gumbelbench: GumbelBench,
+  "gumbel-bench": GumbelBench,
+  darcytube: DarcyTube,
+  "darcy-tube": DarcyTube,
+  rwhdesigner: RwhDesigner,
+  "rwh-designer": RwhDesigner,
+
   gaugemap: GaugeMap,
   indiamap: WaterAtlas,
   wateratlas: WaterAtlas,
